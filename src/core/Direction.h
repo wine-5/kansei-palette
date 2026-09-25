@@ -40,8 +40,10 @@ namespace core
 	 */
 	constexpr DirectionMask rotateClockwise(DirectionMask mask, int turns)
 	{
-		// TODO: 実装する(ビットを左に turns 回ずらし、あふれた分を下位へ戻す)
-		(void)turns;
+		// 1 回転ごとにビットを 1 つ上へずらし、West(8)からあふれた分を North(1)へ戻す
+		const int normalizedTurns{ ((turns % 4) + 4) % 4 };
+		for (int i{}; i < normalizedTurns; ++i)
+			mask = static_cast<DirectionMask>(((mask << 1) | (mask >> 3)) & DIRECTION_ALL);
 		return mask;
 	}
 
@@ -52,7 +54,7 @@ namespace core
 	 */
 	constexpr Direction opposite(Direction dir)
 	{
-		// TODO: 実装する
-		return dir;
+		// 反対 = 時計回りに 2 回(180 度)回した方向
+		return static_cast<Direction>(rotateClockwise(toMask(dir), 2));
 	}
 } // namespace core

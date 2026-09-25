@@ -47,6 +47,22 @@ namespace
 		check(board->countGoals() > 0, "ゴールがある");
 		check(!board->isCleared(), "初期状態ではクリアしていない");
 
+		// 電源・ゴール・ロック・空きは回らない(FR-03)
+		bool areFixedTilesStable{ true };
+		for (int row{}; row < game::board::Board::SIZE; ++row)
+		{
+			for (int col{}; col < game::board::Board::SIZE; ++col)
+			{
+				const auto& tile{ board->getTile(row, col) };
+				if (game::board::isRotatable(tile.m_type))
+					continue;
+				const int before{ tile.m_rotation };
+				if (board->rotate(row, col) || board->getTile(row, col).m_rotation != before)
+					areFixedTilesStable = false;
+			}
+		}
+		check(areFixedTilesStable, "回せないタイルは回らない");
+
 		// 目標の回転数になるまで回す
 		for (const auto& step : SOLUTIONS[stageIndex])
 		{
