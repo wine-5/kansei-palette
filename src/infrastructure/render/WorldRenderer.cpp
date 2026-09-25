@@ -75,6 +75,34 @@ namespace
 	constexpr float PARALLAX_FOLLOW_RATE{ 4.0f };
 	// 回せないタイルをタップしたときに、回転のバネに与える勢い(度/秒)
 	constexpr float BLOCKED_KICK{ 90.0f };
+	// ホバーで浮かせる速さ(毎秒)
+	constexpr float HOVER_RATE{ 14.0f };
+	// タイルのアニメーション(バネで回る・タップで跳ねる・ホバーで浮く)を使うか。
+	// 動かすと画像の細かい模様がちらついて見えるので、いったん止めて回転は即座に切り替える。
+	// 見た目の演出は、あとでパーティクルやシェーダーで補う
+	constexpr bool IS_TILE_ANIMATION_ENABLED{ false };
+
+	// 通電中のタイルの光: タイルより少し大きく、タイルの種類ごとの色で、ゆっくり脈打つ
+	constexpr float GLOW_SIZE{ 1.9f };
+	constexpr float GLOW_LIFT{ 0.06f };
+	constexpr float GLOW_OPACITY{ 0.5f };
+	constexpr float GLOW_OPACITY_GOAL{ 0.95f };
+	constexpr float GLOW_PULSE_BASE{ 0.82f };
+	constexpr float GLOW_PULSE_AMOUNT{ 0.18f };
+	constexpr float GLOW_PULSE_HZ{ 0.64f };
+	constexpr int GLOW_TEXTURE_SIZE{ 64 };
+
+	/// タイルの種類ごとの光の色(game::board::TileType の順)
+	constexpr Color GLOW_COLORS[]{
+		{ 0x5a, 0xc8, 0xff, 255 }, // 直線
+		{ 0xff, 0xb3, 0x47, 255 }, // 曲がり
+		{ 0x7d, 0xff, 0x7a, 255 }, // T字
+		{ 0xc8, 0x8b, 0xff, 255 }, // 十字
+		{ 0x7f, 0xe3, 0xff, 255 }, // 電源
+		{ 0xff, 0xe2, 0x7a, 255 }, // ゴール
+		{ 0xff, 0x6b, 0x5f, 255 }, // ロック
+		{ 0, 0, 0, 0 },            // 空き(光らない)
+	};
 
 	int toIndex(int row, int col)
 	{
@@ -98,6 +126,13 @@ namespace infrastructure::render
 		if (shader.isLoaded())
 			m_tileModel.materials[0].shader = shader.getShader();
 
+		Image glowImage{ GenImageGradientRadial(GLOW_TEXTURE_SIZE, GLOW_TEXTURE_SIZE, 0.0f, WHITE, BLANK) };
+		m_glowTexture = LoadTextureFromImage(glowImage);
+		UnloadImage(glowImage);
+		SetTextureFilter(m_glowTexture, TEXTURE_FILTER_BILINEAR);
+		m_glowModel = LoadModelFromMesh(GenMeshPlane(1.0f, 1.0f, 1, 1));
+		m_glowModel.materials[0].maps[MATERIAL_MAP_ALBEDO].texture = m_glowTexture;
+
 		m_camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
 		m_camera.fovy = game::data::CAMERA_FOVY_DEG;
 		m_camera.projection = CAMERA_PERSPECTIVE;
@@ -113,9 +148,14 @@ namespace infrastructure::render
 		material.maps[MATERIAL_MAP_ALBEDO].texture.id = rlGetTextureIdDefault();
 		UnloadModel(m_tileModel);
 		m_tileModel = Model{};
+		m_glowModel.materials[0].maps[MATERIAL_MAP_ALBEDO].texture.id = rlGetTextureIdDefault();
+		UnloadModel(m_glowModel);
+		m_glowModel = Model{};
+		UnloadTexture(m_glowTexture);
+		m_glowTexture = Texture2D{};
 	}
 
-	void WorldRenderer::update(float dt, const game::flow::GameFlow& flow, const game::event::GameEventList& events, Vector3 cameraShake)
+	void WorldRenderer::update(float dt, const game::flow::GameFlow& flow, const game::event::GameEventList& events, const game::flow::GameInput& input, Vector3 cameraShake)
 	{
 		m_time += dt;
 		if (IsKeyPressed(KEY_F2))
@@ -152,6 +192,8 @@ namespace infrastructure::render
 			m_needsSnap = false;
 		}
 
+		const bool isPlaying{ flow.getPhase() == game::flow::GamePhase::Playing };
+
 		for (int row{}; row < game::board::Board::SIZE; ++row)
 		{
 			for (int col{}; col < game::board::Board::SIZE; ++col)
@@ -167,8 +209,23 @@ namespace infrastructure::render
 				const float target{ isLit ? 1.0f : 0.0f };
 				const float rate{ target > visual.m_power ? game::data::POWER_RISE_RATE : game::data::POWER_FALL_RATE };
 				visual.m_power = core::approachExp(visual.m_power, target, rate, dt);
+
+				const bool isHovered{ isPlaying && row == input.m_hoveredRow && col == input.m_hoveredCol && game::board::isRotatable(tile.m_type) };
+				visual.m_hover = core::approachExp(visual.m_hover, isHovered ? 1.0f : 0.0f, HOVER_RATE, dt);
+
+				if constexpr (!IS_TILE_ANIMATION_ENABLED)
+				{
+					visual.m_angle.snapTo(tile.m_rotation * 90.0f);
+					visual.m_tapScale = 0.0f;
+					visual.m_hover = 0.0f;
+				}
 			}
 		}
+
+		// 回せるタイルの上では、カーソルを指の形にする
+		const bool isOverRotatable{ isPlaying && game::board::Board::isInside(input.m_hoveredRow, input.m_hoveredCol)
+			&& game::board::isRotatable(board.getTile(input.m_hoveredRow, input.m_hoveredCol).m_type) };
+		SetMouseCursor(isOverRotatable ? MOUSE_CURSOR_POINTING_HAND : MOUSE_CURSOR_DEFAULT);
 
 		updateCamera(cameraShake);
 	}
@@ -187,6 +244,7 @@ namespace infrastructure::render
 		shader.end();
 
 		drawTiles(flow.getBoard(), flow.getStageIndex());
+		drawGlows(flow.getBoard());
 
 		shader.begin();
 		drawProps(flow);
@@ -281,6 +339,10 @@ namespace infrastructure::render
 
 	void WorldRenderer::drawTiles(const game::board::Board& board, int stageIndex) const
 	{
+		// タイルの画像はマスより少し大きく(接点が板の外に出る分)、隣のタイルと同じ高さで重なっている。
+		// 深度を書き込むと、重なった部分でどちらを手前に描くかが画素ごとに揺れて、カメラが動くたびにちらつく
+		// (Z ファイティング)。タイルは深度を書き込まず、描いた順に重ねる
+		rlDisableDepthMask();
 		for (int row{}; row < game::board::Board::SIZE; ++row)
 		{
 			for (int col{}; col < game::board::Board::SIZE; ++col)
@@ -290,13 +352,44 @@ namespace infrastructure::render
 				m_tileModel.materials[0].maps[MATERIAL_MAP_ALBEDO].texture = m_assets->getTileTexture(stageIndex, tile.m_type, tileVariant(stageIndex, row, col));
 
 				Vector3 position{ cellToWorld(row, col) };
-				position.y += TILE_LIFT;
-				const float scale{ game::data::TILE_SIZE * game::data::TILE_TEXTURE_SCALE * (1.0f + visual.m_tapScale) };
+				position.y += TILE_LIFT + game::data::TILE_HOVER_LIFT * visual.m_hover;
+				const float scale{ game::data::TILE_SIZE * game::data::TILE_TEXTURE_SCALE
+					* (1.0f + visual.m_tapScale + game::data::TILE_HOVER_SCALE * visual.m_hover) };
 				// 上から見て時計回り = Y 軸まわりの負の回転
 				DrawModelEx(m_tileModel, position, Vector3{ 0.0f, 1.0f, 0.0f }, -visual.m_angle.m_value, Vector3{ scale, 1.0f, scale },
 					RestoreShader::makeTint(WHITE, visual.m_power));
 			}
 		}
+		rlEnableDepthMask();
+	}
+
+	void WorldRenderer::drawGlows(const game::board::Board& board) const
+	{
+		const float pulse{ GLOW_PULSE_BASE + GLOW_PULSE_AMOUNT * std::sin(m_time * 2.0f * PI * GLOW_PULSE_HZ) };
+
+		// 光は重ねるほど明るくなる加算合成。奥のものを隠さないよう、深度は書き込まない
+		rlDisableDepthMask();
+		BeginBlendMode(BLEND_ADDITIVE);
+		for (int row{}; row < game::board::Board::SIZE; ++row)
+		{
+			for (int col{}; col < game::board::Board::SIZE; ++col)
+			{
+				const game::board::Tile& tile{ board.getTile(row, col) };
+				const TileVisual& visual{ m_tileVisuals[toIndex(row, col)] };
+				Color color{ GLOW_COLORS[static_cast<size_t>(tile.m_type)] };
+				if (color.a == 0 || visual.m_power < 0.01f)
+					continue;
+
+				const float opacity{ tile.m_type == game::board::TileType::Goal ? GLOW_OPACITY_GOAL : GLOW_OPACITY };
+				color.a = static_cast<unsigned char>(255.0f * std::clamp(visual.m_power * opacity * pulse, 0.0f, 1.0f));
+				Vector3 position{ cellToWorld(row, col) };
+				position.y += GLOW_LIFT;
+				const float size{ game::data::TILE_SIZE * GLOW_SIZE };
+				DrawModelEx(m_glowModel, position, Vector3{ 0.0f, 1.0f, 0.0f }, 0.0f, Vector3{ size, 1.0f, size }, color);
+			}
+		}
+		EndBlendMode();
+		rlEnableDepthMask();
 	}
 
 	void WorldRenderer::drawProps(const game::flow::GameFlow& flow) const

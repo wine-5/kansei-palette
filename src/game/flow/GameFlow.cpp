@@ -41,39 +41,85 @@ namespace game::flow
 
 	void GameFlow::startStage(int stageIndex)
 	{
-		// TODO: 実装する(data::STAGES[stageIndex] を board::parseStage で読み込み、主人公を入場させて StageIntro へ)
+		loadBoard(stageIndex);
+		m_hero.startRunIn();
+		pushEvent(event::GameEventType::StageStarted, -1, -1, stageIndex);
+		changePhase(GamePhase::StageIntro);
+	}
+
+	void GameFlow::loadBoard(int stageIndex)
+	{
 		m_stageIndex = stageIndex;
+		if (const auto board{ board::parseStage(data::STAGES[stageIndex].m_layout) })
+			m_board = *board;
+	}
+
+	void GameFlow::pushEvent(event::GameEventType type, int row, int col, int value)
+	{
+		m_events.push_back(event::GameEvent{ type, row, col, value });
 	}
 
 	void GameFlow::resetAll()
 	{
 		// TODO: 実装する(色・小物を初期化する)
 		// タイトルでも箱庭の上に盤面を見せるため、ステージ 1 の盤面を読み込んでおく
-		m_stageIndex = 0;
-		if (const auto board{ board::parseStage(data::STAGES[0].m_layout) })
-			m_board = *board;
+		loadBoard(0);
 		changePhase(GamePhase::Title);
 	}
 
 	void GameFlow::updateTitle(const GameInput& input)
 	{
-		// TODO: 実装する(決定で GameStarted を記録し、ステージ 1 を始める)
-		(void)input;
+		// TODO: 「はじめる」ボタンができたら、画面のクリックでは始めないようにする
+		if (!input.m_isConfirmPressed && !input.m_isPointerPressed)
+			return;
+		pushEvent(event::GameEventType::GameStarted);
+		startStage(0);
 	}
 
 	void GameFlow::updateStageIntro(const GameInput& input)
 	{
-		// TODO: 実装する(主人公が立ち位置に着いたら Playing へ)
+		// 主人公が立ち位置に着いたら(走りのポーズが終わったら)遊べるようにする
 		(void)input;
+		if (m_hero.getPose() != hero::HeroPose::Run)
+			changePhase(GamePhase::Playing);
 	}
 
 	void GameFlow::updatePlaying(const GameInput& input)
 	{
-		// TODO: 実装する
-		// - タップ: m_board.rotate() → TileRotated / TileBlocked(ロックなら主人公が汗)
-		// - 点灯数が増えたら GoalLit、全点灯で StageCleared → Clearing へ
-		// - やりなおし: 盤面を初期状態に戻し StageReset(主人公は目が回る)
-		(void)input;
+		if (input.m_isResetPressed)
+		{
+			loadBoard(m_stageIndex);
+			m_hero.onReset();
+			pushEvent(event::GameEventType::StageReset);
+			return;
+		}
+
+		if (!input.hasTap())
+			return;
+
+		const int row{ input.m_tappedRow };
+		const int col{ input.m_tappedCol };
+		const int litBefore{ m_board.countLitGoals() };
+		if (!m_board.rotate(row, col))
+		{
+			// 回せないタイル。ロックタイルのときだけ主人公が汗をかく
+			if (m_board.getTile(row, col).m_type == board::TileType::Locked)
+				m_hero.onTileBlocked();
+			pushEvent(event::GameEventType::TileBlocked, row, col);
+			return;
+		}
+		pushEvent(event::GameEventType::TileRotated, row, col);
+
+		const int litAfter{ m_board.countLitGoals() };
+		if (litAfter > litBefore)
+			pushEvent(event::GameEventType::GoalLit, -1, -1, litAfter);
+
+		if (m_board.isCleared())
+		{
+			m_hero.onStageCleared();
+			pushEvent(event::GameEventType::StageCleared, -1, -1, m_stageIndex);
+			changePhase(GamePhase::Clearing);
+		}
 	}
 
 	void GameFlow::updateClearing()

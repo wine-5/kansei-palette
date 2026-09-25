@@ -39,7 +39,7 @@ MIN_COMPONENT = 150
 # タイルは、石の板(プレート)の中心に合わせた正方形で切り出し、同じ大きさにそろえる。
 # 接点の丸が板の外にはみ出すので、板の 1.16 倍の範囲を切り出す(ゲーム側の TILE_TEXTURE_SCALE と同じ値)
 TILE_PLATE_SCALE = 1.16
-TILE_IMAGE_SIZE = 104
+TILE_IMAGE_SIZE = 128  # 2 のべき乗にしておくと、Web(WebGL1)でもミップマップを作れる(動いたときのちらつきを抑える)
 TILE_KINDS = ["straight", "corner", "tee", "cross", "source", "goal", "locked", "blank"]
 TILE_SHEETS = {
     "AssetsSheet_Blocks1.png": "meadow",
@@ -187,8 +187,67 @@ def split_wide(component):
     return [(round(x0 + i * step), y0, round(x0 + (i + 1) * step), y1, count) for i in range(pieces)]
 
 
-def crop_tile(rgba: np.ndarray, box) -> Image.Image:
-    """板の中心を求め、板の TILE_PLATE_SCALE 倍の正方形を TILE_IMAGE_SIZE に縮小して返す"""
+# タイルの種類ごとの、基準の向きでの接点の方向(N = 上, E = 右, S = 下, W = 左)
+TILE_CONNECTIONS = {
+    "straight": "NS", "corner": "NE", "tee": "NEW", "cross": "NESW",
+    "source": "S", "goal": "N", "locked": "NS", "blank": "",
+}
+# 接点の位置を探す範囲(切り出した正方形の一辺に対する割合)
+CONNECTOR_EDGE = 0.16   # 辺からの距離
+CONNECTOR_BAND = 0.20   # 辺の中央からの距離
+MAX_ALIGN_SHIFT = 0.08  # 位置合わせで動かす最大量
+
+
+def measure_connector_offset(canvas: np.ndarray, kind: str):
+    """接点(配管の端の丸)が辺の中央からどれだけずれているかを返す (dx, dy)。
+
+    配管は明るく鮮やかな色なので、その画素だけを拾って位置を求める。
+    上下の接点からは横のずれ、左右の接点からは縦のずれが分かる。
+    """
+    side = canvas.shape[0]
+    rgb = canvas[..., :3].astype(int)
+    maximum, minimum = rgb.max(axis=2), rgb.min(axis=2)
+    pipe = (canvas[..., 3] > 200) & (maximum > 220) & (maximum - minimum > 80)
+    edge, band, center = side * CONNECTOR_EDGE, side * CONNECTOR_BAND, side / 2
+    ys, xs = np.nonzero(pipe)
+    near_center_x = np.abs(xs - center) < band
+    near_center_y = np.abs(ys - center) < band
+
+    horizontal, vertical = [], []
+    connections = TILE_CONNECTIONS[kind]
+    if "N" in connections:
+        horizontal += list(xs[(ys < edge) & near_center_x])
+    if "S" in connections:
+        horizontal += list(xs[(ys >= side - edge) & near_center_x])
+    if "W" in connections:
+        vertical += list(ys[(xs < edge) & near_center_y])
+    if "E" in connections:
+        vertical += list(ys[(xs >= side - edge) & near_center_y])
+
+    limit = side * MAX_ALIGN_SHIFT
+    dx = float(np.clip(np.median(horizontal) + 0.5 - center, -limit, limit)) if horizontal else 0.0
+    dy = float(np.clip(np.median(vertical) + 0.5 - center, -limit, limit)) if vertical else 0.0
+    return dx, dy
+
+
+def crop_square(rgba: np.ndarray, box, cx: float, cy: float, side: int) -> np.ndarray:
+    """中心 (cx, cy)、一辺 side の正方形を切り出す。このタイルの外接矩形の外(隣のタイルやシートの外)は透明にする"""
+    x0, y0, x1, y1 = box[:4]
+    left, top = int(round(cx - side / 2)), int(round(cy - side / 2))
+    canvas = np.zeros((side, side, 4), dtype=np.uint8)
+    sx0, sy0 = max(left, x0), max(top, y0)
+    sx1, sy1 = min(left + side, x1), min(top + side, y1)
+    canvas[sy0 - top:sy1 - top, sx0 - left:sx1 - left] = rgba[sy0:sy1, sx0:sx1]
+    return canvas
+
+
+def crop_tile(rgba: np.ndarray, box, kind: str) -> Image.Image:
+    """板の TILE_PLATE_SCALE 倍の正方形を切り出して TILE_IMAGE_SIZE に縮小する。
+
+    1. 板(石のプレート)の中心で切り出す
+    2. 接点が辺の中央に来るように位置を合わせる。AI で描いた絵は配管が少し中心から外れていることがあり、
+       そのままだと隣のタイルと接点がずれる(回転させるとずれ方も変わる)
+    """
     x0, y0, x1, y1 = box[:4]
     alpha = rgba[y0:y1, x0:x1, 3] > 128
     rows, cols = alpha.sum(axis=1), alpha.sum(axis=0)
@@ -198,14 +257,10 @@ def crop_tile(rgba: np.ndarray, box) -> Image.Image:
     cy = y0 + (plate_rows.min() + plate_rows.max() + 1) / 2
     cx = x0 + (plate_cols.min() + plate_cols.max() + 1) / 2
     plate = max(plate_rows.max() - plate_rows.min(), plate_cols.max() - plate_cols.min()) + 1
-    half = plate * TILE_PLATE_SCALE / 2
-    left, top = int(round(cx - half)), int(round(cy - half))
-    side = int(round(half * 2))
-    # このタイルの外接矩形の外(隣のタイルやシートの外)は透明で埋める
-    canvas = np.zeros((side, side, 4), dtype=np.uint8)
-    sx0, sy0 = max(left, x0), max(top, y0)
-    sx1, sy1 = min(left + side, x1), min(top + side, y1)
-    canvas[sy0 - top:sy1 - top, sx0 - left:sx1 - left] = rgba[sy0:sy1, sx0:sx1]
+    side = int(round(plate * TILE_PLATE_SCALE))
+
+    dx, dy = measure_connector_offset(crop_square(rgba, box, cx, cy, side), kind)
+    canvas = crop_square(rgba, box, cx + dx, cy + dy, side)
     return Image.fromarray(canvas, "RGBA").resize((TILE_IMAGE_SIZE, TILE_IMAGE_SIZE), Image.LANCZOS)
 
 
@@ -276,7 +331,7 @@ def slice_tile_sheet(rgba, theme, out_dir, cleaned, draw) -> int:
     total = 0
     for kind, row in zip(TILE_KINDS, rows):
         for index, (_, box) in enumerate(sorted(row, key=lambda item: item[1][0])[:VARIANTS_PER_KIND]):
-            crop_tile(rgba, box).save(folder / f"{kind}_{index:02d}.png", optimize=True)
+            crop_tile(rgba, box, kind).save(folder / f"{kind}_{index:02d}.png", optimize=True)
             total += 1
             if draw:
                 draw.rectangle(box[:4], outline=(0, 255, 255))

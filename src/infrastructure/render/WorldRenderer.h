@@ -39,9 +39,10 @@ namespace infrastructure::render
 		 * @param dt 経過秒数
 		 * @param flow ゲームの状態
 		 * @param events このフレームに起きたこと
+		 * @param input このフレームの操作(ホバー中のマスを浮かせるのに使う)
 		 * @param cameraShake カメラの揺れ(infrastructure::fx::Effects から)
 		 */
-		void update(float dt, const game::flow::GameFlow& flow, const game::event::GameEventList& events, Vector3 cameraShake);
+		void update(float dt, const game::flow::GameFlow& flow, const game::event::GameEventList& events, const game::flow::GameInput& input, Vector3 cameraShake);
 
 		/**
 		 * @brief 箱庭を描く(BeginMode3D 〜 EndMode3D を含む)
@@ -71,6 +72,7 @@ namespace infrastructure::render
 			float m_tapScale{};    // タップ時に一瞬大きくなる量
 			float m_power{};       // 通電度(0〜1)。色づきと光に使う
 			float m_poweredTime{}; // 電気が届いてからの秒数(電源から遠いほど遅れて色づく)
+			float m_hover{};       // マウスが乗っている度合い(0〜1)。回せるタイルを浮かせる
 		};
 
 		/// 盤面の状態に合わせて、すべてのタイルの見た目を即座にそろえる(ステージ開始・やりなおし時)
@@ -85,11 +87,15 @@ namespace infrastructure::render
 		void drawForeground() const;
 		void drawGround() const;
 		void drawTiles(const game::board::Board& board, int stageIndex) const;
+		/// 通電中のタイルに光を重ねる(加算合成)
+		void drawGlows(const game::board::Board& board) const;
 		void drawProps(const game::flow::GameFlow& flow) const;
 
 		const resource::Assets* m_assets{};
 		Camera3D m_camera{};
-		Model m_tileModel{}; // タイル用の 1×1 の板(GenMeshPlane)
+		Model m_tileModel{}; // タイル用の 1×1 の板(GenMeshPlane)。色の復元シェーダーで描く
+		Model m_glowModel{}; // 光用の 1×1 の板。標準のシェーダーで描く(光はグレーにしない)
+		Texture2D m_glowTexture{}; // 中心が明るく外へ消えていく円
 		std::array<TileVisual, game::board::Board::SIZE * game::board::Board::SIZE> m_tileVisuals{};
 		Vector2 m_parallax{}; // ポインター位置によるカメラのずれ(なめらかに追従させる)
 		bool m_needsSnap{ true };
