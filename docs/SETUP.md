@@ -189,7 +189,27 @@ index.data   ← resources/ の中身
 
 ---
 
-## 6. 日本語フォントの更新
+## 6. GitHub Pages で公開する(テストプレイ用)
+
+main ブランチに push すると、GitHub Actions(`.github/workflows/pages.yml`)が Web 版をビルドし、次の URL に自動で公開します。
+
+**https://wine-5.github.io/kansei-palette/**
+
+### 最初に 1 回だけ行う設定
+
+1. リポジトリを **Public** にする(無料プランでは非公開リポジトリで Pages を使えない)
+2. GitHub のリポジトリ → **Settings** → **Pages** → **Build and deployment** の **Source** を **GitHub Actions** にする
+3. main に push する(または **Actions** タブ → 「Deploy Web build to GitHub Pages」→ **Run workflow**)
+
+### 確認・トラブル時
+
+- 進行状況は **Actions** タブで確認できます。ビルドから公開まで数分かかります(初回は Emscripten のダウンロードでもう少しかかります)
+- Pages はファイルを 10 分ほどキャッシュするため、公開直後は古い版が表示されることがあります。Ctrl+F5 で再読み込みしてください
+- Actions で使う Emscripten のバージョンは `pages.yml` の `version:` で指定しています。ローカルの emsdk を更新したらこちらも揃えてください
+
+---
+
+## 7. 日本語フォントの更新
 
 `resources/fonts/NotoSansJP-Regular-subset.ttf` には、ASCII・かな・全角記号・**JIS 第 1 水準漢字(約 3000 字)**が入っています(約 930KB。元のフォントは約 9.5MB)。よく使う漢字はほぼ入っているため、通常は作り直す必要はありません。
 
