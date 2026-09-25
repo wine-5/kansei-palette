@@ -90,6 +90,7 @@ namespace game::flow
 		std::array<int, data::STAGES.size()> m_raisedPropCounts{}; // ステージごとのせり上がった小物の数
 		bool m_isSoundOn{ true };
 		bool m_hasReachedEnding{};
+		bool m_hasRestoreStarted{}; // クリア演出で、色の復元を始めたか
 		event::GameEventList m_events;
 	};
 } // namespace game::flow
