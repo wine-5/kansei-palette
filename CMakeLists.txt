@@ -25,7 +25,7 @@ FetchContent_MakeAvailable(raylib)
 # ゲーム本体
 # ------------------------------------------------------------
 add_executable(${PROJECT_NAME}
-    src/main.cpp
+    src/Main.cpp
     src/infrastructure/resource/JpFont.cpp
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
