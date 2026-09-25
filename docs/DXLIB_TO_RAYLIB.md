@@ -19,7 +19,7 @@ raylib 6.0 の関数名で書いています。関数の一覧は公式のチー
 5. **ハンドル(int)ではなく構造体を持つ**
    `int handle = LoadGraph(...)` の代わりに `Texture2D tex = LoadTexture(...)`。`tex.width` / `tex.height` でサイズが取れる(`GetGraphSize` 不要)。解放は `UnloadTexture(tex)` と自分で呼ぶ。
 6. **日本語フォントは「使う文字」を指定して読み込む**
-   既定フォントは ASCII のみ。`DrawString` の感覚で `DrawText("日本語")` と書くと「?」になる。`LoadFontEx` に使う文字(コードポイント)を渡してテクスチャに焼き込む必要がある → このテンプレートの `LoadJapaneseFont()` を使い、表示する文章は `src/main.cpp` の `text` 名前空間に登録する。フォントサイズは読み込み時に決まる(描画時に大きくするとぼやける)。
+   既定フォントは ASCII のみ。`DrawString` の感覚で `DrawText("日本語")` と書くと「?」になる。`LoadFontEx` に使う文字(コードポイント)を渡してテクスチャに焼き込む必要がある → `infrastructure::resource::loadJapaneseFont()` を使い、表示する文章は `src/infrastructure/ui/UiText.h` に登録する。フォントサイズは読み込み時に決まる(描画時に大きくするとぼやける)。
 7. **描画は `BeginDrawing()` 〜 `EndDrawing()` で囲む**
    `ClearDrawScreen` → `ClearBackground`、`ScreenFlip` → `EndDrawing`。`SetDrawScreen(DX_SCREEN_BACK)` は不要(常にダブルバッファ)。
 8. **キーの「押した瞬間」が標準で取れる**
@@ -45,7 +45,7 @@ raylib 6.0 の関数名で書いています。関数の一覧は公式のチー
 | `ChangeWindowMode(TRUE)` | (既定でウィンドウ) | 全画面は `ToggleFullscreen()` |
 | `SetMainWindowText` | `SetWindowTitle` | |
 | `DxLib_End()` | `CloseWindow()` | |
-| `ProcessMessage() == 0` | `!WindowShouldClose()` | Web では `emscripten_set_main_loop` を使う(`src/main.cpp` 参照) |
+| `ProcessMessage() == 0` | `!WindowShouldClose()` | Web では `emscripten_set_main_loop` を使う(`src/Main.cpp` 参照) |
 | `SetDrawScreen(DX_SCREEN_BACK)` | 不要 | |
 | `ClearDrawScreen()` | `BeginDrawing()` + `ClearBackground(color)` | |
 | `ScreenFlip()` | `EndDrawing()` | |
@@ -86,8 +86,8 @@ raylib 6.0 の関数名で書いています。関数の一覧は公式のチー
 |---|---|---|
 | `DrawString(x, y, "abc", c)` | `DrawText("abc", x, y, size, c)` | 既定フォントは ASCII のみ |
 | `DrawFormatString(x, y, c, "%d", n)` | `DrawText(TextFormat("%d", n), x, y, size, c)` | |
-| `CreateFontToHandle` / `LoadFontDataToHandle` | `LoadFontEx(path, size, codepoints, count)` | 日本語は `LoadJapaneseFont()`(`src/jp_font.h`) |
-| `DrawStringToHandle` | `DrawTextEx(font, "…", pos, size, spacing, c)` | テンプレートの `DrawTextJp()` を使うと楽 |
+| `CreateFontToHandle` / `LoadFontDataToHandle` | `LoadFontEx(path, size, codepoints, count)` | 日本語は `loadJapaneseFont()`(`src/infrastructure/resource/JpFont.h`) |
+| `DrawStringToHandle` | `DrawTextEx(font, "…", pos, size, spacing, c)` | フォントは `Assets::getUiFont()` から取る |
 | `GetDrawStringWidth` | `MeasureText` / `MeasureTextEx` | 中央寄せに使う |
 | `DeleteFontToHandle` | `UnloadFont(font)` | |
 
@@ -108,7 +108,7 @@ raylib 6.0 の関数名で書いています。関数の一覧は公式のチー
 
 | DxLib | raylib | 備考 |
 |---|---|---|
-| (DxLib_Init で自動) | `InitAudioDevice()` | **Web ではクリック後に呼ぶ**(`src/main.cpp` の `StartAudio()`) |
+| (DxLib_Init で自動) | `InitAudioDevice()` | **Web ではクリック後に呼ぶ**(`src/infrastructure/audio/Audio.h`) |
 | `LoadSoundMem("se.wav")` | `LoadSound("se.wav")` | 効果音向け(全体をメモリに展開) |
 | `PlaySoundMem(h, DX_PLAYTYPE_BACK)` | `PlaySound(se)` | |
 | `StopSoundMem(h)` | `StopSound(se)` | |

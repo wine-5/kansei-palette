@@ -146,7 +146,7 @@ python3 tools/serve_web.py build-web/web 8080
 | `index.html` をダブルクリックすると真っ黒 | `file://` では wasm を読めない。必ずローカルサーバー経由で開く |
 | 直したのに反映されない | ブラウザのキャッシュ。`tools/serve_web.py` はキャッシュ無効にしているが、他のサーバーを使うときは Ctrl+F5 |
 | 画像を追加したのに読み込めない | `resources/` の外に置いていないか確認。`resources/` 内なら再ビルドで自動的に `index.data` に入る |
-| 音が鳴らない | クリック前に `InitAudioDevice()` していないか確認(`src/main.cpp` の `StartAudio()` 参照) |
+| 音が鳴らない | クリック前に `InitAudioDevice()` していないか確認(`src/infrastructure/audio/Audio.h` 参照) |
 | 画面が固まる | `while` ループや `WaitTime()` でブラウザを止めていないか確認 |
 | エラーの詳細を見たい | ブラウザで F12 → コンソール。raylib のログ(`INFO:` / `WARNING:`)もここに出る |
 
@@ -179,7 +179,7 @@ index.data   ← resources/ の中身
 2. **Kind of project** を **HTML** にする
 3. **Uploads** で zip をアップロードし、**This file will be played in the browser** にチェック
 4. **Embed options**
-   - **Viewport dimensions**: `960 × 540`(`src/main.cpp` の画面サイズと同じにする)
+   - **Viewport dimensions**: `1280 × 720`(`src/game/data/Config.h` の `SCREEN_WIDTH` / `SCREEN_HEIGHT` と同じにする)
    - **Fullscreen button**: オン推奨
    - **SharedArrayBuffer support**: オフのまま(このテンプレートはスレッドを使わないので不要)
    - **Mobile friendly**: スマホ対応をするならオン
@@ -225,7 +225,7 @@ python tools\subset_font.py "NotoSansJP[wght].ttf" resources\fonts\NotoSansJP-Re
 
 スクリプトは `src/` 内のソースに書かれた日本語文字もすべて拾って収録します。
 
-**フォント側に字形があっても、プログラム側でその文字を読み込んでいないと「?」になります。** 画面に出す文章は `src/main.cpp` の `text` 名前空間に書き、`AllTexts()` に足してください(`LoadJapaneseFont` がそこから文字を集めます)。
+**フォント側に字形があっても、プログラム側でその文字を読み込んでいないと「?」になります。** 画面に出す文章は `src/infrastructure/ui/UiText.h`(ステージ名・ヒントは `src/game/data/Stages.h`)に書いてください(`Assets::load()` がそこから文字を集めます)。
 
 ### ライセンス
 
