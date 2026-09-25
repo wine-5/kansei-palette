@@ -1,4 +1,5 @@
 #pragma once
+#include <cmath>
 
 namespace core
 {
@@ -14,11 +15,7 @@ namespace core
 	 */
 	inline float approachExp(float current, float target, float rate, float dt)
 	{
-		// TODO: 実装する(current + (target - current) × (1 - exp(-rate × dt)))
-		(void)target;
-		(void)rate;
-		(void)dt;
-		return current;
+		return current + (target - current) * (1.0f - std::exp(-rate * dt));
 	}
 
 	/**
@@ -28,7 +25,7 @@ namespace core
 	 */
 	inline float easeOutCubic(float t)
 	{
-		// TODO: 実装する
-		return t;
+		const float inv{ 1.0f - t };
+		return 1.0f - inv * inv * inv;
 	}
 } // namespace core

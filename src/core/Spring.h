@@ -21,10 +21,10 @@ namespace core
 		 */
 		void update(float dt, float stiffness, float damping)
 		{
-			// TODO: 実装する(加速度 = (目標 - 現在) × 強さ - 速度 × 減衰)
-			(void)dt;
-			(void)stiffness;
-			(void)damping;
+			// 加速度 = (目標 - 現在) × 強さ - 速度 × 減衰。速度を先に更新する(半陰的オイラー法で安定させる)
+			const float acceleration{ (m_target - m_value) * stiffness - m_velocity * damping };
+			m_velocity += acceleration * dt;
+			m_value += m_velocity * dt;
 		}
 
 		/**
