@@ -1,6 +1,7 @@
 #pragma once
 #include "raylib.h"
 #include "game/event/GameEvent.h"
+#include <array>
 
 namespace infrastructure::audio
 {
@@ -29,6 +30,12 @@ namespace infrastructure::audio
 		void initialize();
 
 		bool m_isInitialized{};
-		// TODO: 効果音(回転、点灯、クリア、色が戻る、エンディング、回せない、やりなおし)の Sound を持つ
+		Sound m_rotate{};  // タイルを回した
+		Sound m_blocked{}; // 回せないタイルをタップした
+		Sound m_clear{};   // ステージクリア
+		Sound m_restore{}; // 色が戻る
+		Sound m_ending{};  // エンディング
+		Sound m_reset{};   // やりなおし
+		std::array<Sound, 7> m_goals{}; // ゴール点灯(点灯数が多いほど高い音)
 	};
 } // namespace infrastructure::audio

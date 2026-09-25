@@ -1,5 +1,9 @@
 #include "GameFlow.h"
+#include "core/Easing.h"
 #include "game/board/StageParser.h"
+#include "game/data/Config.h"
+#include <algorithm>
+#include <cmath>
 
 namespace game::flow
 {
@@ -23,9 +27,19 @@ namespace game::flow
 		case GamePhase::Ending: updateEnding(input); break;
 		}
 
+		// 「音」ボタンはどの状態でも効く
+		if (input.m_isSoundTogglePressed)
+		{
+			m_isSoundOn = !m_isSoundOn;
+			pushEvent(event::GameEventType::SoundToggled, -1, -1, m_isSoundOn ? 1 : 0);
+		}
+
 		m_hero.update(dt, input.m_hasAnyInput);
-		// TODO: 実装する(m_restore を m_restoreTarget へ RESTORE_RATE で近づける。core::approachExp)
-		// TODO: 実装する(どの状態でも「音」ボタンで m_isSoundOn を切り替え、SoundToggled を記録する)
+
+		// 色の復元度は、目標へ少しずつ近づける(約 1.4 秒で 9 割)
+		m_restore.m_red = core::approachExp(m_restore.m_red, m_restoreTarget.m_red, data::RESTORE_RATE, dt);
+		m_restore.m_blue = core::approachExp(m_restore.m_blue, m_restoreTarget.m_blue, data::RESTORE_RATE, dt);
+		m_restore.m_yellowGreen = core::approachExp(m_restore.m_yellowGreen, m_restoreTarget.m_yellowGreen, data::RESTORE_RATE, dt);
 	}
 
 	int GameFlow::getRaisedPropCount(int stageIndex) const
@@ -61,7 +75,10 @@ namespace game::flow
 
 	void GameFlow::resetAll()
 	{
-		// TODO: 実装する(色・小物を初期化する)
+		m_restore = RestoreLevel{};
+		m_restoreTarget = RestoreLevel{};
+		m_raisedPropCounts.fill(0);
+		m_hasReachedEnding = false;
 		// タイトルでも箱庭の上に盤面を見せるため、ステージ 1 の盤面を読み込んでおく
 		loadBoard(0);
 		changePhase(GamePhase::Title);
@@ -118,27 +135,73 @@ namespace game::flow
 		{
 			m_hero.onStageCleared();
 			pushEvent(event::GameEventType::StageCleared, -1, -1, m_stageIndex);
+			m_hasRestoreStarted = false;
 			changePhase(GamePhase::Clearing);
 		}
 	}
 
 	void GameFlow::updateClearing()
 	{
-		// TODO: 実装する(クリア演出のタイムライン)
-		// - CLEAR_RESTORE_START で ColorRestoring、その色の目標復元度を 1 にする
-		// - CLEAR_PROP_INTERVAL ごとに PropRaised
-		// - CLEAR_CARD_TIME で最終ステージ以外は ClearCard、最終ステージは ENDING_DELAY 後に Ending へ
+		const data::StageDefinition& stage{ data::STAGES[m_stageIndex] };
+
+		// 少し間をおいて、そのステージの色を世界に戻す
+		if (!m_hasRestoreStarted && m_phaseTime >= data::CLEAR_RESTORE_START)
+		{
+			m_hasRestoreStarted = true;
+			switch (stage.m_hue)
+			{
+			case data::HueBand::Red: m_restoreTarget.m_red = 1.0f; break;
+			case data::HueBand::Blue: m_restoreTarget.m_blue = 1.0f; break;
+			case data::HueBand::YellowGreen: m_restoreTarget.m_yellowGreen = 1.0f; break;
+			}
+			pushEvent(event::GameEventType::ColorRestoring, -1, -1, static_cast<int>(stage.m_hue));
+		}
+
+		// 色が戻り始めてから、小物を一定の間隔で 1 つずつせり上げる
+		if (m_hasRestoreStarted)
+		{
+			const float elapsed{ m_phaseTime - data::CLEAR_RESTORE_START };
+			const int shouldRaise{ std::min(stage.m_propCount, static_cast<int>(std::floor(elapsed / data::CLEAR_PROP_INTERVAL)) + 1) };
+			int& raised{ m_raisedPropCounts[m_stageIndex] };
+			while (raised < shouldRaise)
+			{
+				pushEvent(event::GameEventType::PropRaised, -1, -1, raised);
+				++raised;
+			}
+		}
+
+		const bool isLastStage{ m_stageIndex + 1 >= static_cast<int>(data::STAGES.size()) };
+		if (!isLastStage && m_phaseTime >= data::CLEAR_CARD_TIME)
+		{
+			changePhase(GamePhase::ClearCard);
+		}
+		else if (isLastStage && m_phaseTime >= data::CLEAR_CARD_TIME + data::ENDING_DELAY)
+		{
+			m_hasReachedEnding = true;
+			m_hero.onEnding();
+			pushEvent(event::GameEventType::EndingStarted);
+			changePhase(GamePhase::Ending);
+		}
 	}
 
 	void GameFlow::updateClearCard(const GameInput& input)
 	{
-		// TODO: 実装する(決定で次のステージを始める)
-		(void)input;
+		// TODO: 「つぎへ」ボタンができたら、画面のクリックでは進まないようにする
+		if (input.m_isConfirmPressed || input.m_isPointerPressed)
+			startStage(m_stageIndex + 1);
 	}
 
 	void GameFlow::updateEnding(const GameInput& input)
 	{
-		// TODO: 実装する(決定で resetAll() してステージ 1 から)
-		(void)input;
+		// 演出を見てもらうため、エンディングに入ってすぐのクリックは受け付けない
+		constexpr float INPUT_DELAY{ 1.5f };
+		if (m_phaseTime < INPUT_DELAY)
+			return;
+		// TODO: 「もういちど あそぶ」ボタンができたら、画面のクリックでは始めないようにする
+		if (!input.m_isConfirmPressed && !input.m_isPointerPressed)
+			return;
+		// 色と小物をリセットして、ステージ 1 から
+		resetAll();
+		startStage(0);
 	}
 } // namespace game::flow

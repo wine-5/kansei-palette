@@ -4,8 +4,10 @@
 //   - 3 ステージとも、初期状態ではクリアしていない
 //   - 解答表どおりに回すとクリアできる
 //   - GameFlow でタイトルから始め、タップでステージ 1 をクリアできる
+//   - 3 ステージを通してエンディングまで進み、もういちど遊ぶと最初に戻る
 #include "game/board/StageParser.h"
 #include "game/data/Stages.h"
+#include "game/data/Config.h"
 #include "game/flow/GameFlow.h"
 #include <algorithm>
 #include <cstdio>
@@ -128,6 +130,66 @@ namespace
 		flow.update(DT, tap);
 		check(flow.getBoard().getTile(0, 0).m_rotation == before, "クリア演出中はタイルが回らない");
 	}
+
+	/// 指定した秒数だけ、何も操作せずに進める
+	void advance(game::flow::GameFlow& flow, float seconds)
+	{
+		constexpr float DT{ 1.0f / 60.0f };
+		for (float t{}; t < seconds; t += DT)
+			flow.update(DT, game::flow::GameInput{});
+	}
+
+	/// 解答どおりにタップしてステージをクリアする
+	void solveCurrentStage(game::flow::GameFlow& flow)
+	{
+		for (const auto& step : SOLUTIONS[flow.getStageIndex()])
+		{
+			for (int i{}; i < 4 && flow.getBoard().getTile(step.m_row, step.m_col).m_rotation != step.m_rotation; ++i)
+			{
+				game::flow::GameInput tap{};
+				tap.m_tappedRow = step.m_row;
+				tap.m_tappedCol = step.m_col;
+				flow.update(1.0f / 60.0f, tap);
+			}
+		}
+	}
+
+	void testFullPlaythrough()
+	{
+		std::printf("--- flow: 3 stages to ending ---\n");
+		game::flow::GameFlow flow;
+		game::flow::GameInput confirm{};
+		confirm.m_isConfirmPressed = true;
+		flow.update(1.0f / 60.0f, confirm);
+
+		for (int stage{}; stage < static_cast<int>(game::data::STAGES.size()); ++stage)
+		{
+			advance(flow, 0.1f);
+			check(flow.getStageIndex() == stage && flow.getPhase() == game::flow::GamePhase::Playing, "ステージが始まって遊べる状態になる");
+			solveCurrentStage(flow);
+			check(flow.getPhase() == game::flow::GamePhase::Clearing, "解答どおりに回すとクリア演出に進む");
+
+			advance(flow, game::data::CLEAR_CARD_TIME + 0.1f);
+			check(flow.getRaisedPropCount(stage) == game::data::STAGES[stage].m_propCount, "クリア演出で、そのステージの小物がすべてせり上がる");
+
+			const bool isLast{ stage + 1 == static_cast<int>(game::data::STAGES.size()) };
+			if (!isLast)
+			{
+				check(flow.getPhase() == game::flow::GamePhase::ClearCard, "クリアカードが表示される");
+				flow.update(1.0f / 60.0f, confirm);
+				check(flow.getStageIndex() == stage + 1, "決定で次のステージへ進む");
+			}
+		}
+
+		advance(flow, game::data::ENDING_DELAY + 3.0f);
+		check(flow.getPhase() == game::flow::GamePhase::Ending, "最後のステージの後はエンディングになる");
+		const game::flow::RestoreLevel& restore{ flow.getRestore() };
+		check(restore.m_red > 0.99f && restore.m_blue > 0.99f && restore.m_yellowGreen > 0.99f, "エンディングではすべての色が戻っている");
+
+		flow.update(1.0f / 60.0f, confirm);
+		check(flow.getStageIndex() == 0 && flow.getPhase() == game::flow::GamePhase::StageIntro, "もういちど遊ぶとステージ 1 から始まる");
+		check(flow.getRaisedPropCount(0) == 0 && flow.getRestore().m_red == 0.0f, "色と小物がリセットされる");
+	}
 } // namespace
 
 int main()
@@ -135,6 +197,7 @@ int main()
 	for (size_t i{}; i < game::data::STAGES.size(); ++i)
 		testStage(i);
 	testFlowStage1();
+	testFullPlaythrough();
 
 	std::printf("\n%s (%d 件失敗)\n", g_failCount == 0 ? "すべて成功" : "失敗あり", g_failCount);
 	return g_failCount == 0 ? 0 : 1;
