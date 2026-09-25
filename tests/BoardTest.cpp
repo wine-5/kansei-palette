@@ -3,8 +3,11 @@
 // 確認すること:
 //   - 3 ステージとも、初期状態ではクリアしていない
 //   - 解答表どおりに回すとクリアできる
+//   - GameFlow でタイトルから始め、タップでステージ 1 をクリアできる
 #include "game/board/StageParser.h"
 #include "game/data/Stages.h"
+#include "game/flow/GameFlow.h"
+#include <algorithm>
 #include <cstdio>
 #include <vector>
 
@@ -71,12 +74,67 @@ namespace
 		}
 		check(board->isCleared(), "解答どおりに回すとクリアできる");
 	}
+
+	bool hasEvent(const game::flow::GameFlow& flow, game::event::GameEventType type)
+	{
+		const auto& events{ flow.getEvents() };
+		return std::any_of(events.begin(), events.end(), [type](const game::event::GameEvent& e) { return e.m_type == type; });
+	}
+
+	void testFlowStage1()
+	{
+		std::printf("--- flow: stage 1 ---\n");
+		constexpr float DT{ 1.0f / 60.0f };
+		game::flow::GameFlow flow;
+		check(flow.getPhase() == game::flow::GamePhase::Title, "タイトルから始まる");
+
+		game::flow::GameInput confirm{};
+		confirm.m_isConfirmPressed = true;
+		flow.update(DT, confirm);
+		check(hasEvent(flow, game::event::GameEventType::GameStarted), "決定で GameStarted が記録される");
+
+		// 主人公の入場が終わるまで進める
+		for (int i{}; i < 600 && flow.getPhase() != game::flow::GamePhase::Playing; ++i)
+			flow.update(DT, game::flow::GameInput{});
+		check(flow.getPhase() == game::flow::GamePhase::Playing, "入場が終わると遊べる状態になる");
+
+		// 回せないタイル(電源)をタップしても盤面は変わらない
+		game::flow::GameInput tapSource{};
+		tapSource.m_tappedRow = 4;
+		tapSource.m_tappedCol = 0;
+		flow.update(DT, tapSource);
+		check(hasEvent(flow, game::event::GameEventType::TileBlocked), "電源をタップすると TileBlocked が記録される");
+
+		bool isCleared{};
+		for (const auto& step : SOLUTIONS[0])
+		{
+			for (int i{}; i < 4 && flow.getBoard().getTile(step.m_row, step.m_col).m_rotation != step.m_rotation; ++i)
+			{
+				game::flow::GameInput tap{};
+				tap.m_tappedRow = step.m_row;
+				tap.m_tappedCol = step.m_col;
+				flow.update(DT, tap);
+				isCleared = isCleared || hasEvent(flow, game::event::GameEventType::StageCleared);
+			}
+		}
+		check(isCleared, "解答どおりにタップすると StageCleared が記録される");
+		check(flow.getPhase() == game::flow::GamePhase::Clearing, "クリア演出に進む");
+
+		// クリア演出中はタップしても回らない
+		const int before{ flow.getBoard().getTile(0, 0).m_rotation };
+		game::flow::GameInput tap{};
+		tap.m_tappedRow = 0;
+		tap.m_tappedCol = 0;
+		flow.update(DT, tap);
+		check(flow.getBoard().getTile(0, 0).m_rotation == before, "クリア演出中はタイルが回らない");
+	}
 } // namespace
 
 int main()
 {
 	for (size_t i{}; i < game::data::STAGES.size(); ++i)
 		testStage(i);
+	testFlowStage1();
 
 	std::printf("\n%s (%d 件失敗)\n", g_failCount == 0 ? "すべて成功" : "失敗あり", g_failCount);
 	return g_failCount == 0 ? 0 : 1;
