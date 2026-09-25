@@ -16,24 +16,26 @@ namespace infrastructure::render
 	class RestoreShader;
 
 	/**
-	 * @brief 3D の箱庭(台座・地面・タイル・小物・主人公)を描く
+	 * @brief 3D の箱庭(地面・台座・タイル・小物・主人公)を描く
 	 * @details 固定カメラ(縦視野角 32 度、俯角 50 度)で見下ろす。
-	 *          タイルの回転アニメーションや光の強さなど、見た目だけの状態はここで持つ。
+	 *          タイルの回転アニメーションや通電度のフェードなど、見た目だけの状態はここで持つ。
+	 *          座標: X = 右、Y = 上、Z = 手前。盤面の中心が原点で、1 マス = 1.0。
 	 */
 	class WorldRenderer
 	{
 	public:
 		/**
-		 * @brief 初期化する(カメラの設定、タイル用の板メッシュの作成)
+		 * @brief 初期化する(タイル用の板メッシュの作成、カメラの設定)
 		 * @param assets 読み込み済みのアセット
+		 * @param shader 色の復元シェーダー(タイルのモデルに設定する)
 		 */
-		void init(const resource::Assets& assets);
+		void init(const resource::Assets& assets, const RestoreShader& shader);
 
 		/// 作ったメッシュなどを解放する
 		void unload();
 
 		/**
-		 * @brief 見た目の状態を 1 フレーム分進める(タイルのバネ、通電度、小物のせり上がり、カメラ)
+		 * @brief 見た目の状態を 1 フレーム分進める(タイルのバネ、通電度、カメラ)
 		 * @param dt 経過秒数
 		 * @param flow ゲームの状態
 		 * @param events このフレームに起きたこと
@@ -51,20 +53,47 @@ namespace infrastructure::render
 		/// 現在のカメラ(マウスからマスを求めるときに使う)
 		const Camera3D& getCamera() const { return m_camera; }
 
+		/**
+		 * @brief マスの中心のワールド座標
+		 * @param row 行
+		 * @param col 列
+		 * @return 盤面の上(y = 0)の座標
+		 */
+		static Vector3 cellToWorld(int row, int col);
+
 	private:
 		/**
 		 * @brief タイル 1 枚分の見た目の状態
 		 */
 		struct TileVisual
 		{
-			core::Spring m_angle;   // 回転角(度)
-			float m_tapScale{};     // タップ時に一瞬大きくなる量
-			float m_power{};        // 通電度(0〜1)。色づきと光に使う
+			core::Spring m_angle;  // 時計回りの回転角(度)。回転数 × 90 を目標にバネで動く
+			float m_tapScale{};    // タップ時に一瞬大きくなる量
+			float m_power{};       // 通電度(0〜1)。色づきと光に使う
+			float m_poweredTime{}; // 電気が届いてからの秒数(電源から遠いほど遅れて色づく)
 		};
+
+		/// 盤面の状態に合わせて、すべてのタイルの見た目を即座にそろえる(ステージ開始・やりなおし時)
+		void snapTiles(const game::board::Board& board);
+
+		/// 画面の縦横比とポインター位置から、カメラの位置を決める
+		void updateCamera(Vector3 cameraShake);
+
+		/// 空・山・村の帯を描く(3D の前。2D)
+		void drawBackground() const;
+		/// 手前の花と柵の帯を描く(3D の後。2D)
+		void drawForeground() const;
+		void drawGround() const;
+		void drawTiles(const game::board::Board& board, int stageIndex) const;
+		void drawProps(const game::flow::GameFlow& flow) const;
 
 		const resource::Assets* m_assets{};
 		Camera3D m_camera{};
-		Model m_tileModel{}; // タイル用の板(GenMeshPlane)
+		Model m_tileModel{}; // タイル用の 1×1 の板(GenMeshPlane)
 		std::array<TileVisual, game::board::Board::SIZE * game::board::Board::SIZE> m_tileVisuals{};
+		Vector2 m_parallax{}; // ポインター位置によるカメラのずれ(なめらかに追従させる)
+		bool m_needsSnap{ true };
+		bool m_isShowingAllProps{}; // F2: 全ステージの小物を表示する(配置の確認用)
+		float m_time{};
 	};
 } // namespace infrastructure::render

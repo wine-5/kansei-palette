@@ -1,51 +1,350 @@
 #include "WorldRenderer.h"
 #include "RestoreShader.h"
-#include "infrastructure/resource/Assets.h"
+#include "core/Easing.h"
 #include "game/data/Config.h"
+#include "infrastructure/resource/Assets.h"
+#include "rlgl.h"
+#include <algorithm>
+#include <cmath>
+#include <vector>
+
+namespace
+{
+	// 箱庭の大きさ(ワールド単位)
+	// 地面は空に浮かぶ小さな島にして、その奥に背景の帯(山・村)を見せる
+	constexpr float GROUND_RADIUS{ 6.4f };
+	constexpr float GROUND_BOTTOM_RADIUS{ 5.4f }; // 島の底(少しすぼめて、浮いた土の塊に見せる)
+	constexpr float GROUND_THICKNESS{ 0.9f };
+	constexpr float LAWN_RADIUS{ 5.9f };
+	constexpr float PEDESTAL_SIZE{ 6.0f };
+	constexpr float PEDESTAL_HEIGHT{ 0.32f };
+	constexpr float PLATE_SIZE{ 5.5f };
+	constexpr float PLATE_THICKNESS{ 0.02f }; // 板は台座の上に載せる(同じ高さに面があるとちらつく)
+	constexpr float TILE_LIFT{ PLATE_THICKNESS + 0.01f }; // タイルは板より少し浮かせて、ちらつき(Z ファイティング)を防ぐ
+
+	// 箱庭の色(色の復元シェーダーで、戻っていない色相はグレーになる)
+	constexpr Color GROUND_COLOR{ 196, 172, 124, 255 };
+	constexpr Color LAWN_COLOR{ 118, 176, 84, 255 };
+	constexpr Color PEDESTAL_COLOR{ 150, 138, 124, 255 };
+	constexpr Color PLATE_COLOR{ 92, 82, 74, 255 };
+
+	// 立ち絵は垂直に立てず、上端を奥へ倒してカメラの方へ向ける(俯角 50 度の 0.9 倍)
+	constexpr float BILLBOARD_TILT_DEG{ 45.0f };
+	// 気球は地面から浮かせ、上下にゆらゆらさせる
+	constexpr float BALLOON_FLOAT{ 0.9f };
+	constexpr float BALLOON_BOB{ 0.08f };
+
+	// 背景の帯: 画面の上半分に空・山・村を重ね、その手前に島(箱庭)を置く。
+	// カメラの俯角が深く地平線がほぼ画面の上端に来るので、地平線ではなく画面の高さを基準に置く。
+	// *_BOTTOM = 帯の下端の位置(画面の高さに対する割合)、*_SCALE = 帯の幅(画面の幅に対する倍率)
+	// *_PARALLAX = 視差でずらす量(ピクセル)。手前の帯ほど大きく動かす
+	constexpr float SKY_BOTTOM{ 0.40f };
+	constexpr float SKY_SCALE{ 1.4f };
+	constexpr float MOUNTAINS_BOTTOM{ 0.55f };
+	constexpr float MOUNTAINS_SCALE{ 1.15f };
+	constexpr float VILLAGE_BOTTOM{ 0.82f };
+	constexpr float VILLAGE_SCALE{ 1.45f };
+	constexpr float BG_WIDTH_SCALE{ 1.15f }; // 視差でずらしても端が見えないよう、画面より少し広く描く
+	constexpr float MOUNTAINS_PARALLAX{ 30.0f };
+	constexpr float VILLAGE_PARALLAX{ 60.0f };
+	constexpr float FOREGROUND_PARALLAX{ 90.0f };
+	constexpr float FOREGROUND_HEIGHT_RATIO{ 0.17f }; // 手前の花の帯の高さ(画面の高さに対する割合)
+	// 空の画像の上と下に続くグラデーション(画像の上端・下端の色に合わせる)
+	constexpr Color SKY_TOP_COLOR{ 112, 168, 222, 255 };
+	constexpr Color SKY_BOTTOM_COLOR{ 250, 214, 172, 255 };
+
+	/**
+	 * @brief 横長の帯を、画面幅に合わせた大きさで描く
+	 * @param texture 帯の画像
+	 * @param bottom 帯の下端の画面 y 座標
+	 * @param widthScale 画面幅に対する帯の幅の倍率
+	 * @param offsetX 横のずれ(視差)
+	 */
+	void drawBand(const Texture2D& texture, float bottom, float widthScale, float offsetX)
+	{
+		if (texture.id == 0)
+			return;
+		const float width{ GetScreenWidth() * widthScale };
+		const float height{ width * texture.height / static_cast<float>(texture.width) };
+		const Rectangle source{ 0.0f, 0.0f, static_cast<float>(texture.width), static_cast<float>(texture.height) };
+		const Rectangle dest{ (GetScreenWidth() - width) / 2.0f + offsetX, bottom - height, width, height };
+		DrawTexturePro(texture, source, dest, Vector2{}, 0.0f, WHITE);
+	}
+
+	// 視差の追従の速さ(毎秒)
+	constexpr float PARALLAX_FOLLOW_RATE{ 4.0f };
+	// 回せないタイルをタップしたときに、回転のバネに与える勢い(度/秒)
+	constexpr float BLOCKED_KICK{ 90.0f };
+
+	int toIndex(int row, int col)
+	{
+		return row * game::board::Board::SIZE + col;
+	}
+
+	/// マスごとに決まった見た目違いの番号(同じ種類のタイルが並んでも単調に見えないようにする)
+	int tileVariant(int stageIndex, int row, int col)
+	{
+		return (row * 7 + col * 13 + stageIndex * 5 + row * col) % infrastructure::resource::TILE_VARIANT_COUNT;
+	}
+} // namespace
 
 namespace infrastructure::render
 {
-	void WorldRenderer::init(const resource::Assets& assets)
+	void WorldRenderer::init(const resource::Assets& assets, const RestoreShader& shader)
 	{
 		m_assets = &assets;
+		m_tileModel = LoadModelFromMesh(GenMeshPlane(1.0f, 1.0f, 1, 1));
+		// DrawModel は BeginShaderMode ではなく material のシェーダーで描かれる
+		if (shader.isLoaded())
+			m_tileModel.materials[0].shader = shader.getShader();
 
-		// TODO: 実装する(注視点から俯角と距離でカメラ位置を求める。距離は画面の縦横比で調整する)
-		m_camera.target = Vector3{ game::data::CAMERA_TARGET_X, game::data::CAMERA_TARGET_Y, game::data::CAMERA_TARGET_Z };
-		m_camera.position = Vector3{ 0.0f, 10.0f, 9.0f };
 		m_camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
 		m_camera.fovy = game::data::CAMERA_FOVY_DEG;
 		m_camera.projection = CAMERA_PERSPECTIVE;
-
-		// TODO: 実装する(m_tileModel = LoadModelFromMesh(GenMeshPlane(...)))
+		updateCamera(Vector3{});
 	}
 
 	void WorldRenderer::unload()
 	{
-		// TODO: 実装する(UnloadModel)
+		// UnloadModel は material のシェーダーとテクスチャも解放してしまうので、借りているものは既定に戻しておく
+		Material& material{ m_tileModel.materials[0] };
+		material.shader.id = rlGetShaderIdDefault();
+		material.shader.locs = rlGetShaderLocsDefault();
+		material.maps[MATERIAL_MAP_ALBEDO].texture.id = rlGetTextureIdDefault();
+		UnloadModel(m_tileModel);
+		m_tileModel = Model{};
 	}
 
 	void WorldRenderer::update(float dt, const game::flow::GameFlow& flow, const game::event::GameEventList& events, Vector3 cameraShake)
 	{
-		// TODO: 実装する
-		// - TileRotated でそのタイルのバネの目標角度を 90 度進める。タップで m_tapScale を与える
-		// - 通電度を POWER_RISE_RATE / POWER_FALL_RATE で近づける(電源からの距離ぶん遅らせる)
-		// - ポインター位置による視差とカメラの揺れをカメラに反映する
-		(void)dt;
-		(void)flow;
-		(void)events;
-		(void)cameraShake;
+		m_time += dt;
+		if (IsKeyPressed(KEY_F2))
+			m_isShowingAllProps = !m_isShowingAllProps;
+
+		const game::board::Board& board{ flow.getBoard() };
+		for (const auto& event : events)
+		{
+			switch (event.m_type)
+			{
+			case game::event::GameEventType::TileRotated:
+			{
+				TileVisual& visual{ m_tileVisuals[toIndex(event.m_row, event.m_col)] };
+				visual.m_angle.m_target += 90.0f;
+				visual.m_tapScale = game::data::TILE_TAP_SCALE;
+				break;
+			}
+			case game::event::GameEventType::TileBlocked:
+			{
+				TileVisual& visual{ m_tileVisuals[toIndex(event.m_row, event.m_col)] };
+				visual.m_angle.m_velocity += BLOCKED_KICK;
+				visual.m_tapScale = game::data::TILE_TAP_SCALE;
+				break;
+			}
+			case game::event::GameEventType::StageStarted:
+			case game::event::GameEventType::StageReset: m_needsSnap = true; break;
+			default: break;
+			}
+		}
+
+		if (m_needsSnap)
+		{
+			snapTiles(board);
+			m_needsSnap = false;
+		}
+
+		for (int row{}; row < game::board::Board::SIZE; ++row)
+		{
+			for (int col{}; col < game::board::Board::SIZE; ++col)
+			{
+				const game::board::Tile& tile{ board.getTile(row, col) };
+				TileVisual& visual{ m_tileVisuals[toIndex(row, col)] };
+				visual.m_angle.update(dt, game::data::TILE_SPRING_STIFFNESS, game::data::TILE_SPRING_DAMPING);
+				visual.m_tapScale = core::approachExp(visual.m_tapScale, 0.0f, game::data::TILE_TAP_DECAY, dt);
+
+				// 電源から遠いタイルほど遅れて色づく(電気が流れていくように見せる)。消えるときは待たずにすぐ消す
+				visual.m_poweredTime = tile.m_isPowered ? visual.m_poweredTime + dt : 0.0f;
+				const bool isLit{ tile.m_isPowered && visual.m_poweredTime >= tile.m_distance * game::data::POWER_DELAY_PER_STEP };
+				const float target{ isLit ? 1.0f : 0.0f };
+				const float rate{ target > visual.m_power ? game::data::POWER_RISE_RATE : game::data::POWER_FALL_RATE };
+				visual.m_power = core::approachExp(visual.m_power, target, rate, dt);
+			}
+		}
+
+		updateCamera(cameraShake);
 	}
 
 	void WorldRenderer::draw(const game::flow::GameFlow& flow, const RestoreShader& shader) const
 	{
-		BeginMode3D(m_camera);
+		ClearBackground(SKY_BOTTOM_COLOR);
 		shader.begin();
-
-		// TODO: 実装する(地面・台座 → タイル → 小物 → 主人公の順に描く)
-		(void)flow;
-		DrawGrid(10, 1.0f); // 仮: 枠組みの確認用に格子を描く(実装したら消す)
-
+		drawBackground();
 		shader.end();
+
+		BeginMode3D(m_camera);
+
+		shader.begin();
+		drawGround();
+		shader.end();
+
+		drawTiles(flow.getBoard(), flow.getStageIndex());
+
+		shader.begin();
+		drawProps(flow);
+		shader.end();
+
 		EndMode3D();
+
+		shader.begin();
+		drawForeground();
+		shader.end();
+	}
+
+	Vector3 WorldRenderer::cellToWorld(int row, int col)
+	{
+		constexpr float center{ (game::board::Board::SIZE - 1) / 2.0f };
+		return Vector3{ (col - center) * game::data::TILE_SIZE, 0.0f, (row - center) * game::data::TILE_SIZE };
+	}
+
+	void WorldRenderer::snapTiles(const game::board::Board& board)
+	{
+		for (int row{}; row < game::board::Board::SIZE; ++row)
+		{
+			for (int col{}; col < game::board::Board::SIZE; ++col)
+			{
+				const game::board::Tile& tile{ board.getTile(row, col) };
+				TileVisual& visual{ m_tileVisuals[toIndex(row, col)] };
+				visual.m_angle.snapTo(tile.m_rotation * 90.0f);
+				visual.m_tapScale = 0.0f;
+				visual.m_power = tile.m_isPowered ? 1.0f : 0.0f;
+				visual.m_poweredTime = tile.m_isPowered ? 100.0f : 0.0f;
+			}
+		}
+	}
+
+	void WorldRenderer::updateCamera(Vector3 cameraShake)
+	{
+		// 縦 VIEW_HEIGHT が必ず入る距離と、横 VIEW_WIDTH_MIN が必ず入る距離の遠い方(縦長の画面では横で決まる)
+		const float aspect{ static_cast<float>(GetScreenWidth()) / static_cast<float>(std::max(GetScreenHeight(), 1)) };
+		const float tanHalf{ std::tan(game::data::CAMERA_FOVY_DEG * DEG2RAD / 2.0f) };
+		const float distance{ std::max((game::data::VIEW_HEIGHT / 2.0f) / tanHalf, (game::data::VIEW_WIDTH_MIN / 2.0f) / (tanHalf * aspect)) };
+
+		// ポインターの位置に応じて、カメラを少しずらす(視差で奥行きを感じさせる)
+		const Vector2 mouse{ GetMousePosition() };
+		const float nx{ std::clamp(mouse.x / GetScreenWidth() * 2.0f - 1.0f, -1.0f, 1.0f) };
+		const float ny{ std::clamp(mouse.y / GetScreenHeight() * 2.0f - 1.0f, -1.0f, 1.0f) };
+		const float dt{ GetFrameTime() };
+		m_parallax.x = core::approachExp(m_parallax.x, nx * game::data::PARALLAX_X, PARALLAX_FOLLOW_RATE, dt);
+		m_parallax.y = core::approachExp(m_parallax.y, -ny * game::data::PARALLAX_Y, PARALLAX_FOLLOW_RATE, dt);
+
+		const float pitch{ game::data::CAMERA_PITCH_DEG * DEG2RAD };
+		const Vector3 target{ game::data::CAMERA_TARGET_X, game::data::CAMERA_TARGET_Y, game::data::CAMERA_TARGET_Z };
+		m_camera.target = Vector3{ target.x + cameraShake.x, target.y + cameraShake.y, target.z + cameraShake.z };
+		m_camera.position = Vector3{
+			target.x + m_parallax.x + cameraShake.x,
+			target.y + distance * std::sin(pitch) + m_parallax.y + cameraShake.y,
+			target.z + distance * std::cos(pitch) + cameraShake.z,
+		};
+	}
+
+	void WorldRenderer::drawGround() const
+	{
+		// 島の土の部分(上面が芝生の少し下)
+		DrawCylinder(Vector3{ 0.0f, -PEDESTAL_HEIGHT - 0.03f - GROUND_THICKNESS, 0.0f }, GROUND_RADIUS, GROUND_BOTTOM_RADIUS, GROUND_THICKNESS, 64, GROUND_COLOR);
+		DrawCylinder(Vector3{ 0.0f, -PEDESTAL_HEIGHT - 0.01f, 0.0f }, LAWN_RADIUS, LAWN_RADIUS, 0.02f, 64, LAWN_COLOR);
+		DrawCube(Vector3{ 0.0f, -PEDESTAL_HEIGHT / 2.0f, 0.0f }, PEDESTAL_SIZE, PEDESTAL_HEIGHT, PEDESTAL_SIZE, PEDESTAL_COLOR);
+		DrawCube(Vector3{ 0.0f, PLATE_THICKNESS / 2.0f, 0.0f }, PLATE_SIZE, PLATE_THICKNESS, PLATE_SIZE, PLATE_COLOR);
+	}
+
+	void WorldRenderer::drawBackground() const
+	{
+		const float screenHeight{ static_cast<float>(GetScreenHeight()) };
+		const float shift{ -m_parallax.x / game::data::PARALLAX_X }; // -1〜1
+
+		// 空: 画面全体をグラデーションで塗り、その上に空の画像を描く
+		DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(), SKY_TOP_COLOR, SKY_BOTTOM_COLOR);
+		drawBand(m_assets->getBackground(resource::BackgroundLayer::Sky), screenHeight * SKY_BOTTOM, SKY_SCALE, 0.0f);
+		drawBand(m_assets->getBackground(resource::BackgroundLayer::Mountains), screenHeight * MOUNTAINS_BOTTOM, MOUNTAINS_SCALE, shift * MOUNTAINS_PARALLAX);
+		drawBand(m_assets->getBackground(resource::BackgroundLayer::Village), screenHeight * VILLAGE_BOTTOM, VILLAGE_SCALE, shift * VILLAGE_PARALLAX);
+	}
+
+	void WorldRenderer::drawForeground() const
+	{
+		// 手前の花と柵は画面の下端に重ねる(箱庭を額縁のように囲む)
+		const Texture2D& foreground{ m_assets->getBackground(resource::BackgroundLayer::Foreground) };
+		if (foreground.id == 0)
+			return;
+		const float height{ GetScreenHeight() * FOREGROUND_HEIGHT_RATIO };
+		const float widthScale{ height * foreground.width / static_cast<float>(foreground.height) / GetScreenWidth() };
+		const float shift{ -m_parallax.x / game::data::PARALLAX_X };
+		drawBand(foreground, static_cast<float>(GetScreenHeight()), std::max(widthScale, BG_WIDTH_SCALE), shift * FOREGROUND_PARALLAX);
+	}
+
+	void WorldRenderer::drawTiles(const game::board::Board& board, int stageIndex) const
+	{
+		for (int row{}; row < game::board::Board::SIZE; ++row)
+		{
+			for (int col{}; col < game::board::Board::SIZE; ++col)
+			{
+				const game::board::Tile& tile{ board.getTile(row, col) };
+				const TileVisual& visual{ m_tileVisuals[toIndex(row, col)] };
+				m_tileModel.materials[0].maps[MATERIAL_MAP_ALBEDO].texture = m_assets->getTileTexture(stageIndex, tile.m_type, tileVariant(stageIndex, row, col));
+
+				Vector3 position{ cellToWorld(row, col) };
+				position.y += TILE_LIFT;
+				const float scale{ game::data::TILE_SIZE * game::data::TILE_TEXTURE_SCALE * (1.0f + visual.m_tapScale) };
+				// 上から見て時計回り = Y 軸まわりの負の回転
+				DrawModelEx(m_tileModel, position, Vector3{ 0.0f, 1.0f, 0.0f }, -visual.m_angle.m_value, Vector3{ scale, 1.0f, scale },
+					RestoreShader::makeTint(WHITE, visual.m_power));
+			}
+		}
+	}
+
+	void WorldRenderer::drawProps(const game::flow::GameFlow& flow) const
+	{
+		struct PropDraw
+		{
+			const game::data::PropPlacement* m_placement{};
+			float m_y{};
+		};
+		std::vector<PropDraw> draws;
+		for (size_t stage{}; stage < game::data::STAGES.size(); ++stage)
+		{
+			const game::data::StageDefinition& definition{ game::data::STAGES[stage] };
+			const int count{ m_isShowingAllProps ? definition.m_propCount : flow.getRaisedPropCount(static_cast<int>(stage)) };
+			for (int i{}; i < count; ++i)
+			{
+				const game::data::PropPlacement& placement{ definition.m_props[i] };
+				float y{ -PEDESTAL_HEIGHT };
+				if (placement.m_type == game::data::PropType::Balloon)
+					y += BALLOON_FLOAT + std::sin(m_time * 1.3f) * BALLOON_BOB;
+				draws.push_back(PropDraw{ &placement, y });
+			}
+		}
+
+		// 半透明の縁が正しく重なるよう、奥(Z が小さい)から描く
+		std::sort(draws.begin(), draws.end(), [](const PropDraw& a, const PropDraw& b) { return a.m_placement->m_z < b.m_placement->m_z; });
+
+		const float tilt{ BILLBOARD_TILT_DEG * DEG2RAD };
+		const Vector3 up{ 0.0f, std::cos(tilt), -std::sin(tilt) };
+		for (const PropDraw& draw : draws)
+		{
+			const game::data::PropPlacement& placement{ *draw.m_placement };
+			const Texture2D& texture{ m_assets->getPropTexture(placement.m_type) };
+			if (texture.id == 0)
+				continue;
+
+			const float height{ placement.m_height };
+			const float width{ height * texture.width / static_cast<float>(texture.height) };
+			Rectangle source{ 0.0f, 0.0f, static_cast<float>(texture.width), static_cast<float>(texture.height) };
+			if (placement.m_isFlipped)
+			{
+				// 左右反転: 右端から左へ読む(幅だけ負にすると画像の外を読んでしまう)
+				source.x = source.width;
+				source.width = -source.width;
+			}
+			// 足元(画像の下辺中央)を配置位置に合わせる
+			DrawBillboardPro(m_camera, texture, source, Vector3{ placement.m_x, draw.m_y, placement.m_z }, up, Vector2{ width, height },
+				Vector2{ width / 2.0f, 0.0f }, 0.0f, WHITE);
+		}
 	}
 } // namespace infrastructure::render
