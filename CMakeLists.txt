@@ -46,6 +46,17 @@ target_include_directories(kansei_game PUBLIC "${CMAKE_SOURCE_DIR}/src")  # "gam
 kansei_set_compile_options(kansei_game)
 
 # ------------------------------------------------------------
+# 盤面ロジックのテスト(ネイティブのみ。raylib なしで動く)
+# ------------------------------------------------------------
+if(NOT EMSCRIPTEN)
+    add_executable(KanseiTests tests/BoardTest.cpp)
+    target_link_libraries(KanseiTests PRIVATE kansei_game)
+    kansei_set_compile_options(KanseiTests)
+    enable_testing()
+    add_test(NAME BoardTest COMMAND KanseiTests)
+endif()
+
+# ------------------------------------------------------------
 # ゲーム本体(infrastructure 層 + 起動処理)
 # ------------------------------------------------------------
 file(GLOB_RECURSE KANSEI_APP_SOURCES CONFIGURE_DEPENDS
@@ -61,7 +72,7 @@ if(MSVC)
     set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
     # vcpkg の MSBuild 統合(vcpkg integrate install)が入った PC で余計な後処理が走らないようにする
     set_target_properties(${PROJECT_NAME} PROPERTIES VS_GLOBAL_VcpkgEnabled false)
-    set_target_properties(kansei_game PROPERTIES VS_GLOBAL_VcpkgEnabled false)
+    set_target_properties(kansei_game KanseiTests PROPERTIES VS_GLOBAL_VcpkgEnabled false)
 endif()
 
 if(APPLE)
