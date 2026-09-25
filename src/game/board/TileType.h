@@ -5,7 +5,7 @@
 namespace game::board
 {
 	/**
-	 * @brief タイルの種類(要件定義 3章「タイルの種類」)
+	 * @brief タイルの種類
 	 */
 	enum class TileType
 	{

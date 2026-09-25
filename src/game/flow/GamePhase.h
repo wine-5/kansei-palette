@@ -3,7 +3,7 @@
 namespace game::flow
 {
 	/**
-	 * @brief ゲームの進行状態(要件定義 3章「ゲームの流れ」)
+	 * @brief ゲームの進行状態
 	 */
 	enum class GamePhase
 	{

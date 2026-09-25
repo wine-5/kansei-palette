@@ -10,7 +10,7 @@ namespace infrastructure::resource
 namespace infrastructure::ui
 {
 	/**
-	 * @brief ステージクリア後に画面下に出るカード(要件定義 6章「クリアカード」)
+	 * @brief ステージクリア後に画面下に出るカード
 	 * @details 強調色の丸、「○○が もどった」、「あと N つの いろ」、「つぎへ」ボタン。
 	 */
 	class ClearCard

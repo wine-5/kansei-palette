@@ -3,7 +3,7 @@
 namespace game::hero
 {
 	/**
-	 * @brief 主人公のポーズ(要件定義 3章「主人公の反応」)
+	 * @brief 主人公のポーズ
 	 */
 	enum class HeroPose
 	{

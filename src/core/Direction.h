@@ -5,7 +5,7 @@ namespace core
 {
 	/**
 	 * @brief 盤面上の方向
-	 * @details タイルの接続方向は、この値を OR した 4 ビットで表す(要件定義 3章「回転のルール」)。
+	 * @details タイルの接続方向は、この値を OR した 4 ビットで表す。
 	 *          時計回りに 1 回転すると、各ビットが North → East → South → West → North の順に移る。
 	 */
 	enum class Direction : std::uint8_t

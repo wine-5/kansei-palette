@@ -4,7 +4,7 @@
 namespace infrastructure::ui
 {
 	/**
-	 * @brief カプセル型のボタン(押しているときは 3px 沈む。要件定義 6章「強調色とフォント」)
+	 * @brief カプセル型のボタン(押しているときは 3px 沈む)
 	 */
 	class Button
 	{

@@ -1,11 +1,11 @@
 #pragma once
 
-// 調整用の数値はすべてここに集める(要件定義 NFR-05)。
-// 値はプロトタイプの実装値(要件定義 5章)。実際に見て微調整する。
+// 調整用の数値はすべてここに集める。
+// 値はプロトタイプの実装値。実際に見て微調整する。
 namespace game::data
 {
 	// --- 画面 ---
-	constexpr int SCREEN_WIDTH{ 1280 }; // 基準の解像度(NFR-04)
+	constexpr int SCREEN_WIDTH{ 1280 }; // 基準の解像度
 	constexpr int SCREEN_HEIGHT{ 720 };
 
 	// --- カメラ ---

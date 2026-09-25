@@ -6,7 +6,7 @@
 namespace infrastructure::fx
 {
 	/**
-	 * @brief 星くず(加算合成の点の集まり。要件定義 5章「クリア演出のタイムライン」)
+	 * @brief 星くず(加算合成の点の集まり)
 	 * @details 上限 PARTICLE_MAX 粒を使い回す。寿命 0.9〜1.9 秒、重力あり、地面でバウンドする。
 	 */
 	class Particles
