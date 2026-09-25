@@ -87,11 +87,15 @@ namespace infrastructure::render
 		void drawForeground() const;
 		void drawGround() const;
 		void drawTiles(const game::board::Board& board, int stageIndex) const;
+		/// 通電中のタイルに光を重ねる(加算合成)
+		void drawGlows(const game::board::Board& board) const;
 		void drawProps(const game::flow::GameFlow& flow) const;
 
 		const resource::Assets* m_assets{};
 		Camera3D m_camera{};
-		Model m_tileModel{}; // タイル用の 1×1 の板(GenMeshPlane)
+		Model m_tileModel{}; // タイル用の 1×1 の板(GenMeshPlane)。色の復元シェーダーで描く
+		Model m_glowModel{}; // 光用の 1×1 の板。標準のシェーダーで描く(光はグレーにしない)
+		Texture2D m_glowTexture{}; // 中心が明るく外へ消えていく円
 		std::array<TileVisual, game::board::Board::SIZE * game::board::Board::SIZE> m_tileVisuals{};
 		Vector2 m_parallax{}; // ポインター位置によるカメラのずれ(なめらかに追従させる)
 		bool m_needsSnap{ true };

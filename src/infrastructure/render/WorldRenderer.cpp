@@ -78,6 +78,27 @@ namespace
 	// ホバーで浮かせる速さ(毎秒)
 	constexpr float HOVER_RATE{ 14.0f };
 
+	// 通電中のタイルの光: タイルより少し大きく、タイルの種類ごとの色で、ゆっくり脈打つ
+	constexpr float GLOW_SIZE{ 1.9f };
+	constexpr float GLOW_LIFT{ 0.06f };
+	constexpr float GLOW_OPACITY{ 0.5f };
+	constexpr float GLOW_OPACITY_GOAL{ 0.95f };
+	constexpr float GLOW_PULSE_BASE{ 0.82f };
+	constexpr float GLOW_PULSE_AMOUNT{ 0.18f };
+	constexpr float GLOW_PULSE_HZ{ 0.64f };
+	constexpr int GLOW_TEXTURE_SIZE{ 64 };
+
+	/// タイルの種類ごとの光の色(game::board::TileType の順)
+	constexpr Color GLOW_COLORS[]{
+		{ 0x5a, 0xc8, 0xff, 255 }, // 直線
+		{ 0xff, 0xb3, 0x47, 255 }, // 曲がり
+		{ 0x7d, 0xff, 0x7a, 255 }, // T字
+		{ 0xc8, 0x8b, 0xff, 255 }, // 十字
+		{ 0x7f, 0xe3, 0xff, 255 }, // 電源
+		{ 0xff, 0xe2, 0x7a, 255 }, // ゴール
+		{ 0xff, 0x6b, 0x5f, 255 }, // ロック
+		{ 0, 0, 0, 0 },            // 空き(光らない)
+	};
 
 	int toIndex(int row, int col)
 	{
@@ -101,6 +122,13 @@ namespace infrastructure::render
 		if (shader.isLoaded())
 			m_tileModel.materials[0].shader = shader.getShader();
 
+		Image glowImage{ GenImageGradientRadial(GLOW_TEXTURE_SIZE, GLOW_TEXTURE_SIZE, 0.0f, WHITE, BLANK) };
+		m_glowTexture = LoadTextureFromImage(glowImage);
+		UnloadImage(glowImage);
+		SetTextureFilter(m_glowTexture, TEXTURE_FILTER_BILINEAR);
+		m_glowModel = LoadModelFromMesh(GenMeshPlane(1.0f, 1.0f, 1, 1));
+		m_glowModel.materials[0].maps[MATERIAL_MAP_ALBEDO].texture = m_glowTexture;
+
 		m_camera.up = Vector3{ 0.0f, 1.0f, 0.0f };
 		m_camera.fovy = game::data::CAMERA_FOVY_DEG;
 		m_camera.projection = CAMERA_PERSPECTIVE;
@@ -116,6 +144,11 @@ namespace infrastructure::render
 		material.maps[MATERIAL_MAP_ALBEDO].texture.id = rlGetTextureIdDefault();
 		UnloadModel(m_tileModel);
 		m_tileModel = Model{};
+		m_glowModel.materials[0].maps[MATERIAL_MAP_ALBEDO].texture.id = rlGetTextureIdDefault();
+		UnloadModel(m_glowModel);
+		m_glowModel = Model{};
+		UnloadTexture(m_glowTexture);
+		m_glowTexture = Texture2D{};
 	}
 
 	void WorldRenderer::update(float dt, const game::flow::GameFlow& flow, const game::event::GameEventList& events, const game::flow::GameInput& input, Vector3 cameraShake)
@@ -200,6 +233,7 @@ namespace infrastructure::render
 		shader.end();
 
 		drawTiles(flow.getBoard(), flow.getStageIndex());
+		drawGlows(flow.getBoard());
 
 		shader.begin();
 		drawProps(flow);
@@ -311,6 +345,35 @@ namespace infrastructure::render
 					RestoreShader::makeTint(WHITE, visual.m_power));
 			}
 		}
+	}
+
+	void WorldRenderer::drawGlows(const game::board::Board& board) const
+	{
+		const float pulse{ GLOW_PULSE_BASE + GLOW_PULSE_AMOUNT * std::sin(m_time * 2.0f * PI * GLOW_PULSE_HZ) };
+
+		// 光は重ねるほど明るくなる加算合成。奥のものを隠さないよう、深度は書き込まない
+		rlDisableDepthMask();
+		BeginBlendMode(BLEND_ADDITIVE);
+		for (int row{}; row < game::board::Board::SIZE; ++row)
+		{
+			for (int col{}; col < game::board::Board::SIZE; ++col)
+			{
+				const game::board::Tile& tile{ board.getTile(row, col) };
+				const TileVisual& visual{ m_tileVisuals[toIndex(row, col)] };
+				Color color{ GLOW_COLORS[static_cast<size_t>(tile.m_type)] };
+				if (color.a == 0 || visual.m_power < 0.01f)
+					continue;
+
+				const float opacity{ tile.m_type == game::board::TileType::Goal ? GLOW_OPACITY_GOAL : GLOW_OPACITY };
+				color.a = static_cast<unsigned char>(255.0f * std::clamp(visual.m_power * opacity * pulse, 0.0f, 1.0f));
+				Vector3 position{ cellToWorld(row, col) };
+				position.y += GLOW_LIFT;
+				const float size{ game::data::TILE_SIZE * GLOW_SIZE };
+				DrawModelEx(m_glowModel, position, Vector3{ 0.0f, 1.0f, 0.0f }, 0.0f, Vector3{ size, 1.0f, size }, color);
+			}
+		}
+		EndBlendMode();
+		rlEnableDepthMask();
 	}
 
 	void WorldRenderer::drawProps(const game::flow::GameFlow& flow) const
