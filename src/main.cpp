@@ -2,6 +2,7 @@
 // ネイティブ(Windows/Linux/macOS)と Web(Emscripten) で同じソースをビルドする。
 
 #include "raylib.h"
+#include "jp_font.h"
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -11,6 +12,8 @@ namespace {
 
 constexpr int kScreenWidth = 960;
 constexpr int kScreenHeight = 540;
+
+Font g_font{};
 
 // ゲームの状態はグローバル(無名名前空間)にまとめておく。
 // Web では 1 フレームごとに関数を呼び出される構造になるため、
@@ -24,7 +27,9 @@ void Draw() {
     BeginDrawing();
     ClearBackground(RAYWHITE);
 
-    // ここに描画処理を書く
+    // テキストを描画してみる
+    // void DrawTextEx(Font font, const char *text, Vector2 position, float fontSize, float spacing, Color tint)
+    DrawTextEx(g_font, "日本語テスト", Vector2{kScreenWidth / 2 , kScreenHeight / 2}, 40, 1,BLACK);
 
     EndDrawing();
 }
@@ -39,7 +44,8 @@ void UpdateDrawFrame() {
 
 int main() {
     InitWindow(kScreenWidth, kScreenHeight, "KanseiPalette");
-
+    g_font = LoadJapaneseFont("resources/fonts/NotoSansJP-Regular-subset.ttf", 48,
+                          "日本語テスト");
 #if defined(PLATFORM_WEB)
     // 【Web の落とし穴: メインループ】
     // ブラウザでは while ループで処理を抱え込むとタブが固まる(描画もイベントも止まる)。
