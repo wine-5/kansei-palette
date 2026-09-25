@@ -1,4 +1,7 @@
 #include "InputReader.h"
+#include "game/board/Board.h"
+#include "game/data/Config.h"
+#include <cmath>
 
 namespace infrastructure::input
 {
@@ -9,20 +12,45 @@ namespace infrastructure::input
 		input.m_isResetPressed = uiAction.m_isResetClicked || IsKeyPressed(KEY_R);
 		input.m_isSoundTogglePressed = uiAction.m_isSoundToggleClicked;
 
-		// TODO: 実装する
-		// - ボタンの上でなければ pickCell でホバー中のマスを求める
-		// - IsMouseButtonPressed(MOUSE_BUTTON_LEFT) ならタップしたマスにする
-		// - m_hasAnyInput(考え込むタイマーのリセット用)を設定する
-		(void)camera;
+		// ボタンの上にあるときは、その下のマスを触ったことにしない
+		if (!uiAction.m_isPointerOverUi)
+		{
+			pickCell(camera, GetMousePosition(), input.m_hoveredRow, input.m_hoveredCol);
+			// タッチのタップも raylib がマウスの左クリックとして扱う
+			input.m_isPointerPressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+			if (input.m_isPointerPressed)
+			{
+				input.m_tappedRow = input.m_hoveredRow;
+				input.m_tappedCol = input.m_hoveredCol;
+			}
+		}
+
+		input.m_hasAnyInput = IsMouseButtonPressed(MOUSE_BUTTON_LEFT) || GetKeyPressed() != 0;
 		return input;
 	}
 
 	void InputReader::pickCell(const Camera3D& camera, Vector2 screenPos, int& outRow, int& outCol)
 	{
-		// TODO: 実装する(GetScreenToWorldRay → y = 0 の平面との交点 → x, z から行と列)
-		(void)camera;
-		(void)screenPos;
 		outRow = -1;
 		outCol = -1;
+
+		// マウス位置から飛ばしたレイと、盤面の平面(y = 0)との交点を求める
+		const Ray ray{ GetScreenToWorldRay(screenPos, camera) };
+		if (std::fabs(ray.direction.y) < 1e-6f)
+			return;
+		const float t{ -ray.position.y / ray.direction.y };
+		if (t < 0.0f)
+			return;
+		const float x{ ray.position.x + ray.direction.x * t };
+		const float z{ ray.position.z + ray.direction.z * t };
+
+		// 盤面の中心が原点、1 マス = TILE_SIZE(infrastructure::render::WorldRenderer::cellToWorld の逆)
+		constexpr float half{ game::board::Board::SIZE / 2.0f };
+		const int col{ static_cast<int>(std::floor(x / game::data::TILE_SIZE + half)) };
+		const int row{ static_cast<int>(std::floor(z / game::data::TILE_SIZE + half)) };
+		if (!game::board::Board::isInside(row, col))
+			return;
+		outRow = row;
+		outCol = col;
 	}
 } // namespace infrastructure::input

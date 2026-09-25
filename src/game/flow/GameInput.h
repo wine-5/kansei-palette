@@ -13,6 +13,7 @@ namespace game::flow
 		int m_tappedCol{ -1 };
 		int m_hoveredRow{ -1 };  // マウスが乗っているマス(無ければ -1)
 		int m_hoveredCol{ -1 };
+		bool m_isPointerPressed{}; // 画面のどこかをクリック・タップした(ボタンの上は除く)
 		bool m_isConfirmPressed{}; // 「はじめる」「つぎへ」「もういちど あそぶ」、Enter / Space
 		bool m_isResetPressed{};   // 「やりなおす」、R キー
 		bool m_isSoundTogglePressed{}; // 「音」ボタン
