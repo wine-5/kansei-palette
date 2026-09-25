@@ -2,7 +2,7 @@
 // ネイティブ(Windows/Linux/macOS)と Web(Emscripten) で同じソースをビルドする。
 
 #include "raylib.h"
-#include "jp_font.h"
+#include "infrastructure/resource/JpFont.h"
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -44,7 +44,7 @@ void UpdateDrawFrame() {
 
 int main() {
     InitWindow(kScreenWidth, kScreenHeight, "KanseiPalette");
-    g_font = LoadJapaneseFont("resources/fonts/NotoSansJP-Regular-subset.ttf", 48,
+    g_font = infrastructure::resource::loadJapaneseFont("resources/fonts/NotoSansJP-Regular-subset.ttf", 48,
                           "日本語テスト");
 #if defined(PLATFORM_WEB)
     // 【Web の落とし穴: メインループ】

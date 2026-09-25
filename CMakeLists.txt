@@ -26,9 +26,10 @@ FetchContent_MakeAvailable(raylib)
 # ------------------------------------------------------------
 add_executable(${PROJECT_NAME}
     src/main.cpp
-    src/jp_font.cpp
+    src/infrastructure/resource/JpFont.cpp
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
+target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/src")  # "infrastructure/..." のように src からのパスで include する
 
 if(MSVC)
     target_compile_options(${PROJECT_NAME} PRIVATE /utf-8 /W4)  # 日本語文字列を UTF-8 として扱う
