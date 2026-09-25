@@ -22,24 +22,46 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(raylib)
 
 # ------------------------------------------------------------
-# ゲーム本体
+# 共通のコンパイル設定
 # ------------------------------------------------------------
-add_executable(${PROJECT_NAME}
-    src/Main.cpp
-    src/infrastructure/resource/JpFont.cpp
-)
-target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
-target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/src")  # "infrastructure/..." のように src からのパスで include する
+function(kansei_set_compile_options target)
+    if(MSVC)
+        target_compile_options(${target} PRIVATE /utf-8 /W4)  # 日本語文字列を UTF-8 として扱う
+    else()
+        target_compile_options(${target} PRIVATE -Wall -Wextra)
+    endif()
+endfunction()
+
+# ------------------------------------------------------------
+# core 層 + game 層(ルールだけ)
+# ------------------------------------------------------------
+# raylib をリンクしないライブラリにすることで、game/ や core/ から
+# #include "raylib.h" するとコンパイルエラーになる(層の依存方向をビルドで強制する)。
+# .cpp を追加したら CMake の再構成時に自動で拾われる。
+file(GLOB_RECURSE KANSEI_GAME_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/core/*.cpp" "${CMAKE_SOURCE_DIR}/src/core/*.h"
+    "${CMAKE_SOURCE_DIR}/src/game/*.cpp" "${CMAKE_SOURCE_DIR}/src/game/*.h")
+add_library(kansei_game STATIC ${KANSEI_GAME_SOURCES})
+target_include_directories(kansei_game PUBLIC "${CMAKE_SOURCE_DIR}/src")  # "game/..." のように src からのパスで include する
+kansei_set_compile_options(kansei_game)
+
+# ------------------------------------------------------------
+# ゲーム本体(infrastructure 層 + 起動処理)
+# ------------------------------------------------------------
+file(GLOB_RECURSE KANSEI_APP_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/src/*.cpp" "${CMAKE_SOURCE_DIR}/src/*.h")
+list(FILTER KANSEI_APP_SOURCES EXCLUDE REGEX "/src/(core|game)/")
+add_executable(${PROJECT_NAME} ${KANSEI_APP_SOURCES})
+target_link_libraries(${PROJECT_NAME} PRIVATE kansei_game raylib)
+kansei_set_compile_options(${PROJECT_NAME})
 
 if(MSVC)
-    target_compile_options(${PROJECT_NAME} PRIVATE /utf-8 /W4)  # 日本語文字列を UTF-8 として扱う
     set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
     # VS のデバッガから起動したときもカレントディレクトリをプロジェクト直下にし、resources/ を読めるようにする
     set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
     # vcpkg の MSBuild 統合(vcpkg integrate install)が入った PC で余計な後処理が走らないようにする
     set_target_properties(${PROJECT_NAME} PROPERTIES VS_GLOBAL_VcpkgEnabled false)
-else()
-    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
+    set_target_properties(kansei_game PROPERTIES VS_GLOBAL_VcpkgEnabled false)
 endif()
 
 if(APPLE)
