@@ -17,6 +17,14 @@ namespace
 
 int main()
 {
+	// MSAA 4x: タイルや台座の縁のギザギザ(ジャギー)をなめらかにする
+	unsigned int flags{ FLAG_MSAA_4X_HINT };
+#if !defined(PLATFORM_WEB)
+	// Windows の表示倍率(125% / 150% など)で拡大されるとき、引き伸ばしでぼやけないよう実際の画素数で描く
+	// (Web 版の raylib はこのフラグに未対応)
+	flags |= FLAG_WINDOW_HIGHDPI;
+#endif
+	SetConfigFlags(flags);
 	InitWindow(game::data::SCREEN_WIDTH, game::data::SCREEN_HEIGHT, "かんせいのパレット");
 	g_application.init();
 
