@@ -13,6 +13,7 @@
 | Web 版をブラウザで確認 | VS Code で **F5**(構成「Web (Edge)」) |
 | ネイティブ版を起動 | VS Code で構成「Native (Windows)」を選んで F5 / `cmake -S . -B build` → `cmake --build build` |
 | itch.io 提出用 zip を作る | `powershell -ExecutionPolicy Bypass -File tools\web.ps1 package` |
+| 他の人に遊んでもらう | main に push → <https://wine-5.github.io/kansei-palette/> に自動公開(GitHub Pages) |
 
 初めての環境では先に [docs/SETUP.md](docs/SETUP.md) の手順で emsdk などを入れてください。
 
@@ -30,6 +31,8 @@ tools/
   web.ps1               Web のビルド / ローカルサーバー / zip 作成(Windows)
   serve_web.py          キャッシュ無効のローカルサーバー
   subset_font.py        日本語フォントのサブセット化
+.github/workflows/
+  pages.yml             main への push で GitHub Pages に自動公開
 docs/
   SETUP.md              セットアップ手順書(emsdk・ビルド・itch.io 提出)
   DXLIB_TO_RAYLIB.md    DxLib → raylib 対応表
