@@ -37,6 +37,7 @@ tools/
   serve_web.py          キャッシュ無効のローカルサーバー
   subset_font.py        日本語フォントのサブセット化
   slice_sheet.py        アセットシートを透過 PNG に切り出して resources/images/ に保存
+  gen_sounds.py         効果音を合成して resources/sounds/ に WAV で保存(標準ライブラリだけで動く)
 .github/workflows/
   pages.yml             main への push で GitHub Pages に自動公開
 docs/
@@ -67,4 +68,4 @@ docs/
 
 - raylib: zlib/libpng License
 - Noto Sans JP(`resources/fonts/`): SIL Open Font License 1.1(`resources/fonts/OFL.txt`)。サブセット化済み
-- サンプルの画像・効果音・BGM(`resources/images/`, `resources/sounds/`): このリポジトリ用にプログラムで生成したもの。自由に差し替え・削除してよい
+- 効果音(`resources/sounds/`): `tools/gen_sounds.py` で合成したもの
