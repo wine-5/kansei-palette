@@ -18,11 +18,26 @@ constexpr int kScreenHeight = 540;
 struct Game {
     Vector2 circlePos{kScreenWidth / 2.0f, kScreenHeight / 2.0f};
     float circleSpeed = 240.0f;  // px/秒
+    Texture2D palette{};
+    float time = 0.0f;
 };
 
 Game g;
 
+void LoadResources() {
+    // パスは実行時のカレントディレクトリからの相対パス。
+    // Web では --preload-file で仮想ファイルシステムの /resources に置かれるので同じパスで読める。
+    // Texture は GPU 側の画像なので InitWindow の後でないと読み込めない(DxLib の LoadGraph と同じ感覚)。
+    g.palette = LoadTexture("resources/images/palette.png");
+}
+
+void UnloadResources() {
+    UnloadTexture(g.palette);
+}
+
 void Update(float dt) {
+    g.time += dt;
+
     // 矢印キーで円を動かす
     if (IsKeyDown(KEY_RIGHT)) g.circlePos.x += g.circleSpeed * dt;
     if (IsKeyDown(KEY_LEFT))  g.circlePos.x -= g.circleSpeed * dt;
@@ -35,6 +50,13 @@ void Draw() {
     ClearBackground(RAYWHITE);
 
     DrawCircleV(g.circlePos, 40.0f, MAROON);
+
+    // 画像を回転させて描く。DrawTexturePro は DxLib の DrawRotaGraph に近い(origin が回転中心)
+    Rectangle src{0, 0, static_cast<float>(g.palette.width), static_cast<float>(g.palette.height)};
+    Rectangle dst{kScreenWidth - 120.0f, 120.0f, src.width * 1.5f, src.height * 1.5f};
+    Vector2 origin{dst.width / 2, dst.height / 2};
+    DrawTexturePro(g.palette, src, dst, origin, g.time * 45.0f, WHITE);
+
     DrawFPS(10, 10);
 
     EndDrawing();
@@ -50,6 +72,7 @@ void UpdateDrawFrame() {
 
 int main() {
     InitWindow(kScreenWidth, kScreenHeight, "KanseiPalette");
+    LoadResources();
 
 #if defined(PLATFORM_WEB)
     // 【Web の落とし穴: メインループ】
@@ -65,6 +88,8 @@ int main() {
     }
 #endif
 
+    // Web ではここに到達しない(タブを閉じればブラウザが全て解放する)
+    UnloadResources();
     CloseWindow();
     return 0;
 }
