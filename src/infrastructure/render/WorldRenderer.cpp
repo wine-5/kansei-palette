@@ -75,6 +75,9 @@ namespace
 	constexpr float PARALLAX_FOLLOW_RATE{ 4.0f };
 	// 回せないタイルをタップしたときに、回転のバネに与える勢い(度/秒)
 	constexpr float BLOCKED_KICK{ 90.0f };
+	// ホバーで浮かせる速さ(毎秒)
+	constexpr float HOVER_RATE{ 14.0f };
+
 
 	int toIndex(int row, int col)
 	{
@@ -115,7 +118,7 @@ namespace infrastructure::render
 		m_tileModel = Model{};
 	}
 
-	void WorldRenderer::update(float dt, const game::flow::GameFlow& flow, const game::event::GameEventList& events, Vector3 cameraShake)
+	void WorldRenderer::update(float dt, const game::flow::GameFlow& flow, const game::event::GameEventList& events, const game::flow::GameInput& input, Vector3 cameraShake)
 	{
 		m_time += dt;
 		if (IsKeyPressed(KEY_F2))
@@ -152,6 +155,8 @@ namespace infrastructure::render
 			m_needsSnap = false;
 		}
 
+		const bool isPlaying{ flow.getPhase() == game::flow::GamePhase::Playing };
+
 		for (int row{}; row < game::board::Board::SIZE; ++row)
 		{
 			for (int col{}; col < game::board::Board::SIZE; ++col)
@@ -167,8 +172,16 @@ namespace infrastructure::render
 				const float target{ isLit ? 1.0f : 0.0f };
 				const float rate{ target > visual.m_power ? game::data::POWER_RISE_RATE : game::data::POWER_FALL_RATE };
 				visual.m_power = core::approachExp(visual.m_power, target, rate, dt);
+
+				const bool isHovered{ isPlaying && row == input.m_hoveredRow && col == input.m_hoveredCol && game::board::isRotatable(tile.m_type) };
+				visual.m_hover = core::approachExp(visual.m_hover, isHovered ? 1.0f : 0.0f, HOVER_RATE, dt);
 			}
 		}
+
+		// 回せるタイルの上では、カーソルを指の形にする
+		const bool isOverRotatable{ isPlaying && game::board::Board::isInside(input.m_hoveredRow, input.m_hoveredCol)
+			&& game::board::isRotatable(board.getTile(input.m_hoveredRow, input.m_hoveredCol).m_type) };
+		SetMouseCursor(isOverRotatable ? MOUSE_CURSOR_POINTING_HAND : MOUSE_CURSOR_DEFAULT);
 
 		updateCamera(cameraShake);
 	}
@@ -290,8 +303,9 @@ namespace infrastructure::render
 				m_tileModel.materials[0].maps[MATERIAL_MAP_ALBEDO].texture = m_assets->getTileTexture(stageIndex, tile.m_type, tileVariant(stageIndex, row, col));
 
 				Vector3 position{ cellToWorld(row, col) };
-				position.y += TILE_LIFT;
-				const float scale{ game::data::TILE_SIZE * game::data::TILE_TEXTURE_SCALE * (1.0f + visual.m_tapScale) };
+				position.y += TILE_LIFT + game::data::TILE_HOVER_LIFT * visual.m_hover;
+				const float scale{ game::data::TILE_SIZE * game::data::TILE_TEXTURE_SCALE
+					* (1.0f + visual.m_tapScale + game::data::TILE_HOVER_SCALE * visual.m_hover) };
 				// 上から見て時計回り = Y 軸まわりの負の回転
 				DrawModelEx(m_tileModel, position, Vector3{ 0.0f, 1.0f, 0.0f }, -visual.m_angle.m_value, Vector3{ scale, 1.0f, scale },
 					RestoreShader::makeTint(WHITE, visual.m_power));

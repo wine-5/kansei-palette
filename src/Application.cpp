@@ -23,7 +23,7 @@ void Application::runFrame()
 	m_audio.onEvents(events, m_flow.isSoundOn());
 	m_effects.onEvents(events, m_flow);
 	m_effects.update(dt);
-	m_worldRenderer.update(dt, m_flow, events, m_effects.getCameraShake());
+	m_worldRenderer.update(dt, m_flow, events, input, m_effects.getCameraShake());
 	m_shaderPreview.update();
 	m_restoreShader.setRestoreLevel(m_shaderPreview.isForcingFullRestore() ? game::flow::RestoreLevel{ 1.0f, 1.0f, 1.0f } : m_flow.getRestore());
 
