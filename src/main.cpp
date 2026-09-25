@@ -1,7 +1,10 @@
 // ゲームジャム用 raylib ひな形
 // ネイティブ(Windows/Linux/macOS)と Web(Emscripten) で同じソースをビルドする。
 
+#include <string>
+
 #include "raylib.h"
+#include "jp_font.h"
 
 #if defined(PLATFORM_WEB)
     #include <emscripten/emscripten.h>
@@ -12,6 +15,21 @@ namespace {
 constexpr int kScreenWidth = 960;
 constexpr int kScreenHeight = 540;
 
+// 画面に出す日本語の文章はここにまとめる。
+// フォント読み込み時にこれらの文字(特に漢字)を拾ってアトラスに焼き込むため、
+// ここに無い漢字を DrawTextEx すると「?」になる。
+namespace text {
+constexpr const char* kTitle = "感性パレット";
+constexpr const char* kHint = "矢印キーで円を動かせます";
+constexpr const char* kSample = "日本語テキスト表示のサンプル。ひらがな・カタカナ・漢字ＯＫ！";
+}  // namespace text
+
+std::string AllTexts() {
+    return std::string(text::kTitle) + text::kHint + text::kSample;
+}
+
+constexpr int kFontSize = 48;  // アトラスに焼くサイズ(表示する最大サイズに合わせる)
+
 // ゲームの状態はグローバル(無名名前空間)にまとめておく。
 // Web では 1 フレームごとに関数を呼び出される構造になるため、
 // main() のローカル変数に状態を持たせることができない。
@@ -19,6 +37,7 @@ struct Game {
     Vector2 circlePos{kScreenWidth / 2.0f, kScreenHeight / 2.0f};
     float circleSpeed = 240.0f;  // px/秒
     Texture2D palette{};
+    Font font{};
     float time = 0.0f;
 };
 
@@ -29,10 +48,18 @@ void LoadResources() {
     // Web では --preload-file で仮想ファイルシステムの /resources に置かれるので同じパスで読める。
     // Texture は GPU 側の画像なので InitWindow の後でないと読み込めない(DxLib の LoadGraph と同じ感覚)。
     g.palette = LoadTexture("resources/images/palette.png");
+    // Web では読み込みが重くなるので、フォントファイルは tools/subset_font.py で縮小したものを使う
+    g.font = LoadJapaneseFont("resources/fonts/NotoSansJP-Regular-subset.ttf", kFontSize, AllTexts().c_str());
 }
 
 void UnloadResources() {
+    UnloadFont(g.font);
     UnloadTexture(g.palette);
+}
+
+// DrawText(既定フォント・ASCII のみ)の日本語版。size は表示ピクセルサイズ
+void DrawTextJp(const char* str, float x, float y, float size, Color color) {
+    DrawTextEx(g.font, str, Vector2{x, y}, size, 1.0f, color);
 }
 
 void Update(float dt) {
@@ -56,6 +83,10 @@ void Draw() {
     Rectangle dst{kScreenWidth - 120.0f, 120.0f, src.width * 1.5f, src.height * 1.5f};
     Vector2 origin{dst.width / 2, dst.height / 2};
     DrawTexturePro(g.palette, src, dst, origin, g.time * 45.0f, WHITE);
+
+    DrawTextJp(text::kTitle, 40, 40, 48, DARKGRAY);
+    DrawTextJp(text::kSample, 40, 110, 24, GRAY);
+    DrawTextJp(text::kHint, 40, kScreenHeight - 50.0f, 24, GRAY);
 
     DrawFPS(10, 10);
 
