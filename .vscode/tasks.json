@@ -1,0 +1,58 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "web: build",
+            "type": "process",
+            "command": "powershell",
+            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tools/web.ps1", "build"],
+            "group": "build",
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "web: serve",
+            "type": "process",
+            "command": "powershell",
+            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tools/web.ps1", "serve"],
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "serve_web",
+                "pattern": { "regexp": "^__never_match__$" },
+                "background": {
+                    "activeBegins": true,
+                    "beginsPattern": "^__never_match__$",
+                    "endsPattern": "^(Serving|Server already running)"
+                }
+            }
+        },
+        {
+            "label": "web: build & serve",
+            "dependsOn": ["web: build", "web: serve"],
+            "dependsOrder": "sequence",
+            "problemMatcher": []
+        },
+        {
+            "label": "web: package (itch.io zip)",
+            "type": "process",
+            "command": "powershell",
+            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tools/web.ps1", "package"],
+            "problemMatcher": "$gcc"
+        },
+        {
+            "label": "native: configure",
+            "type": "process",
+            "command": "cmake",
+            "args": ["-S", "${workspaceFolder}", "-B", "${workspaceFolder}/build"],
+            "problemMatcher": []
+        },
+        {
+            "label": "native: build",
+            "type": "process",
+            "command": "cmake",
+            "args": ["--build", "${workspaceFolder}/build", "--config", "Debug"],
+            "dependsOn": ["native: configure"],
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": "$msCompile"
+        }
+    ]
+}

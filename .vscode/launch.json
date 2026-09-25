@@ -1,0 +1,24 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // F5: Web ビルド → ローカルサーバー起動 → Edge で開く
+            "name": "Web (Edge)",
+            "type": "msedge",
+            "request": "launch",
+            "url": "http://localhost:8080/index.html",
+            "webRoot": "${workspaceFolder}/build-web/web",
+            "preLaunchTask": "web: build & serve"
+        },
+        {
+            // ネイティブ(Windows)版を Visual Studio のデバッガで起動(C/C++ 拡張が必要)
+            "name": "Native (Windows)",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Debug/KanseiPalette.exe",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "preLaunchTask": "native: build"
+        }
+    ]
+}
