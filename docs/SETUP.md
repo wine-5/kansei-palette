@@ -102,7 +102,7 @@ cmake --build build
 VS Code でこのフォルダを開き、**F5**(構成「Web (Edge)」)。
 
 1. Web ビルド(`tools/web.ps1 build`)
-2. ローカルサーバー起動(`http://localhost:8080`、2 回目以降は起動済みのものを再利用)
+2. ローカルサーバーを裏で起動(`http://localhost:8080`、2 回目以降は起動済みのものを再利用。止めるときはタスク「web: stop server」)
 3. Edge でゲームが開く
 
 の順で自動実行されます。ソースを直したらもう一度 F5 するだけです。

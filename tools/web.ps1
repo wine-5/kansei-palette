@@ -1,12 +1,14 @@
 ﻿# Web ビルド用のヘルパー(Windows / PowerShell)。VS Code の F5 からも呼ばれる。
 #
 #   powershell -ExecutionPolicy Bypass -File tools/web.ps1 build     # build-web/web/index.html を生成
-#   powershell -ExecutionPolicy Bypass -File tools/web.ps1 serve     # http://localhost:8080 で配信
+#   powershell -ExecutionPolicy Bypass -File tools/web.ps1 serve     # http://localhost:8080 で配信(Ctrl+C で停止)
+#   powershell -ExecutionPolicy Bypass -File tools/web.ps1 start     # 配信を裏で起動してすぐ戻る(F5 用)
+#   powershell -ExecutionPolicy Bypass -File tools/web.ps1 stop      # 裏で起動した配信を止める
 #   powershell -ExecutionPolicy Bypass -File tools/web.ps1 package   # itch.io 提出用 zip を生成
 #
 # emsdk の場所は環境変数 EMSDK、無ければ C:\emsdk を使う。
 param(
-    [Parameter(Mandatory = $true)][ValidateSet('build', 'serve', 'package')][string]$Action,
+    [Parameter(Mandatory = $true)][ValidateSet('build', 'serve', 'start', 'stop', 'package')][string]$Action,
     [int]$Port = 8080
 )
 # 注意: $ErrorActionPreference = 'Stop' にすると emsdk や emcc の標準エラー出力(警告)で止まるので使わない
@@ -21,9 +23,35 @@ if (-not (Test-Path "$emsdk\emsdk_env.ps1")) {
 $env:EMSDK_QUIET = '1'
 & "$emsdk\emsdk_env.ps1" | Out-Null
 
+$serverArgs = @('-u', (Join-Path $PSScriptRoot 'serve_web.py'), (Join-Path $buildDir 'web'), $Port)
+
+function Test-ServerUp {
+    # Windows は閉じたポートへの接続失敗に約 2 秒かかるため、200ms で打ち切る
+    $client = New-Object Net.Sockets.TcpClient
+    try { return $client.ConnectAsync('127.0.0.1', $Port).Wait(200) } catch { return $false } finally { $client.Close() }
+}
+
 if ($Action -eq 'serve') {
-    & $env:EMSDK_PYTHON -u (Join-Path $PSScriptRoot 'serve_web.py') (Join-Path $buildDir 'web') $Port
+    & $env:EMSDK_PYTHON @serverArgs
     exit $LASTEXITCODE
+}
+
+if ($Action -eq 'start') {
+    # サーバーを裏で起動してすぐ戻る(F5 用。起動済みなら何もしない)
+    if (-not (Test-ServerUp)) {
+        Start-Process -FilePath $env:EMSDK_PYTHON -ArgumentList $serverArgs -WindowStyle Hidden
+        for ($i = 0; $i -lt 50 -and -not (Test-ServerUp); $i++) { Start-Sleep -Milliseconds 100 }
+        if (-not (Test-ServerUp)) { throw "サーバーを起動できませんでした (port $Port)" }
+    }
+    Write-Host "Server running: http://localhost:$Port/"
+    exit 0
+}
+
+if ($Action -eq 'stop') {
+    Get-CimInstance Win32_Process -Filter "name='python.exe'" |
+        Where-Object { $_.CommandLine -match 'serve_web\.py' } |
+        ForEach-Object { Stop-Process -Id $_.ProcessId -Force; Write-Host "Stopped server (pid $($_.ProcessId))" }
+    exit 0
 }
 
 # --- Ninja を探す(無ければ Visual Studio 同梱のものを使う) ---

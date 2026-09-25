@@ -10,24 +10,23 @@
             "problemMatcher": "$gcc"
         },
         {
-            "label": "web: serve",
+            // サーバーを裏で起動してすぐ終わる(起動済みなら何もしない)。止めるときは「web: stop server」
+            "label": "web: start server",
             "type": "process",
             "command": "powershell",
-            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tools/web.ps1", "serve"],
-            "isBackground": true,
-            "problemMatcher": {
-                "owner": "serve_web",
-                "pattern": { "regexp": "^__never_match__$" },
-                "background": {
-                    "activeBegins": true,
-                    "beginsPattern": "^__never_match__$",
-                    "endsPattern": "^(Serving|Server already running)"
-                }
-            }
+            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tools/web.ps1", "start"],
+            "problemMatcher": []
+        },
+        {
+            "label": "web: stop server",
+            "type": "process",
+            "command": "powershell",
+            "args": ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "${workspaceFolder}/tools/web.ps1", "stop"],
+            "problemMatcher": []
         },
         {
             "label": "web: build & serve",
-            "dependsOn": ["web: build", "web: serve"],
+            "dependsOn": ["web: build", "web: start server"],
             "dependsOrder": "sequence",
             "problemMatcher": []
         },
