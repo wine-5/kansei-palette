@@ -227,6 +227,25 @@ namespace infrastructure::render
 			&& game::board::isRotatable(board.getTile(input.m_hoveredRow, input.m_hoveredCol).m_type) };
 		SetMouseCursor(isOverRotatable ? MOUSE_CURSOR_POINTING_HAND : MOUSE_CURSOR_DEFAULT);
 
+		// せり上がった小物はバネで伸び上がる(少し行き過ぎて戻る)。リセットされたら即座に消す
+		for (size_t stage{}; stage < m_propRise.size(); ++stage)
+		{
+			const int raised{ flow.getRaisedPropCount(static_cast<int>(stage)) };
+			for (int i{}; i < game::data::MAX_PROPS_PER_STAGE; ++i)
+			{
+				core::Spring& rise{ m_propRise[stage][i] };
+				if (i < raised)
+				{
+					rise.m_target = 1.0f;
+					rise.update(dt, game::data::PROP_SPRING_STIFFNESS, game::data::PROP_SPRING_DAMPING);
+				}
+				else
+				{
+					rise.snapTo(0.0f);
+				}
+			}
+		}
+
 		updateCamera(cameraShake);
 	}
 
@@ -394,23 +413,27 @@ namespace infrastructure::render
 
 	void WorldRenderer::drawProps(const game::flow::GameFlow& flow) const
 	{
+		(void)flow; // せり上がりの状態は update() で m_propRise に反映済み
 		struct PropDraw
 		{
 			const game::data::PropPlacement* m_placement{};
 			float m_y{};
+			float m_rise{}; // せり上がりの度合い(高さに掛ける)
 		};
 		std::vector<PropDraw> draws;
 		for (size_t stage{}; stage < game::data::STAGES.size(); ++stage)
 		{
 			const game::data::StageDefinition& definition{ game::data::STAGES[stage] };
-			const int count{ m_isShowingAllProps ? definition.m_propCount : flow.getRaisedPropCount(static_cast<int>(stage)) };
-			for (int i{}; i < count; ++i)
+			for (int i{}; i < definition.m_propCount; ++i)
 			{
+				const float rise{ m_isShowingAllProps ? 1.0f : m_propRise[stage][i].m_value };
+				if (rise < 0.01f)
+					continue;
 				const game::data::PropPlacement& placement{ definition.m_props[i] };
 				float y{ -PEDESTAL_HEIGHT };
 				if (placement.m_type == game::data::PropType::Balloon)
 					y += BALLOON_FLOAT + std::sin(m_time * 1.3f) * BALLOON_BOB;
-				draws.push_back(PropDraw{ &placement, y });
+				draws.push_back(PropDraw{ &placement, y, rise });
 			}
 		}
 
@@ -426,7 +449,7 @@ namespace infrastructure::render
 			if (texture.id == 0)
 				continue;
 
-			const float height{ placement.m_height };
+			const float height{ placement.m_height * draw.m_rise };
 			const float width{ height * texture.width / static_cast<float>(texture.height) };
 			Rectangle source{ 0.0f, 0.0f, static_cast<float>(texture.width), static_cast<float>(texture.height) };
 			if (placement.m_isFlipped)

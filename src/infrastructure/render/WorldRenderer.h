@@ -98,6 +98,8 @@ namespace infrastructure::render
 		Texture2D m_glowTexture{}; // 中心が明るく外へ消えていく円
 		std::array<TileVisual, game::board::Board::SIZE * game::board::Board::SIZE> m_tileVisuals{};
 		Vector2 m_parallax{}; // ポインター位置によるカメラのずれ(なめらかに追従させる)
+		// 小物のせり上がり(0 = 地面の下、1 = 立っている)。[ステージ][小物]
+		std::array<std::array<core::Spring, game::data::MAX_PROPS_PER_STAGE>, game::data::STAGES.size()> m_propRise{};
 		bool m_needsSnap{ true };
 		bool m_isShowingAllProps{}; // F2: 全ステージの小物を表示する(配置の確認用)
 		float m_time{};
