@@ -83,6 +83,9 @@ namespace infrastructure::resource
 		/// UI 用のフォント
 		const Font& getUiFont() const { return m_uiFont; }
 
+		/// タイトル用のフォント(タイトルの文字だけを大きく焼き込んだもの)
+		const Font& getTitleFont() const { return m_titleFont; }
+
 	private:
 		// [ステージ][game::board::TileType の順][見た目違い]
 		std::array<std::array<std::array<Texture2D, TILE_VARIANT_COUNT>, 8>, game::data::STAGES.size()> m_tiles{};
@@ -91,5 +94,6 @@ namespace infrastructure::resource
 		std::array<std::vector<Texture2D>, 7> m_heroFrames{}; // game::hero::HeroPose の順
 		Texture2D m_palette{};
 		Font m_uiFont{};
+		Font m_titleFont{};
 	};
 } // namespace infrastructure::resource

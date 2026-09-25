@@ -38,4 +38,18 @@ namespace infrastructure::resource
 		SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
 		return font;
 	}
+
+	Font loadFontForText(const char* path, int fontSize, const char* text)
+	{
+		int count{};
+		int* codepoints{ LoadCodepoints(text, &count) };
+		std::vector<int> unique(codepoints, codepoints + count);
+		UnloadCodepoints(codepoints);
+		std::sort(unique.begin(), unique.end());
+		unique.erase(std::unique(unique.begin(), unique.end()), unique.end());
+
+		Font font{ LoadFontEx(path, fontSize, unique.data(), static_cast<int>(unique.size())) };
+		SetTextureFilter(font.texture, TEXTURE_FILTER_BILINEAR);
+		return font;
+	}
 } // namespace infrastructure::resource
