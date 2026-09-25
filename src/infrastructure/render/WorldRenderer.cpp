@@ -339,6 +339,10 @@ namespace infrastructure::render
 
 	void WorldRenderer::drawTiles(const game::board::Board& board, int stageIndex) const
 	{
+		// タイルの画像はマスより少し大きく(接点が板の外に出る分)、隣のタイルと同じ高さで重なっている。
+		// 深度を書き込むと、重なった部分でどちらを手前に描くかが画素ごとに揺れて、カメラが動くたびにちらつく
+		// (Z ファイティング)。タイルは深度を書き込まず、描いた順に重ねる
+		rlDisableDepthMask();
 		for (int row{}; row < game::board::Board::SIZE; ++row)
 		{
 			for (int col{}; col < game::board::Board::SIZE; ++col)
@@ -356,6 +360,7 @@ namespace infrastructure::render
 					RestoreShader::makeTint(WHITE, visual.m_power));
 			}
 		}
+		rlEnableDepthMask();
 	}
 
 	void WorldRenderer::drawGlows(const game::board::Board& board) const
