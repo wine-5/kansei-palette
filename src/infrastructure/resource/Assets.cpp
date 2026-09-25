@@ -40,8 +40,25 @@ namespace
 			isOk = false;
 			return texture;
 		}
-		// 【Web の落とし穴】WebGL1 は 2 のべき乗でない画像にミップマップを作れないので、双線形補間だけにする
-		SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
+		// ミップマップ + 三線形補間: 縮小表示やカメラが動いたときに、細かい模様がちらつくのを抑える。
+		// 【Web の落とし穴】WebGL1 は 2 のべき乗でない画像にミップマップを作れないので、その場合は双線形補間だけにする
+		// (タイルは 128×128 で切り出しているので Web でもミップマップが効く)
+		const bool isPowerOfTwo{ (texture.width & (texture.width - 1)) == 0 && (texture.height & (texture.height - 1)) == 0 };
+#if defined(PLATFORM_WEB)
+		const bool canUseMipmaps{ isPowerOfTwo };
+#else
+		const bool canUseMipmaps{ true };
+		(void)isPowerOfTwo;
+#endif
+		if (canUseMipmaps)
+		{
+			GenTextureMipmaps(&texture);
+			SetTextureFilter(texture, TEXTURE_FILTER_TRILINEAR);
+		}
+		else
+		{
+			SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
+		}
 		return texture;
 	}
 } // namespace
