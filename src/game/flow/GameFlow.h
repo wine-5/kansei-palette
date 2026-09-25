@@ -64,6 +64,12 @@ namespace game::flow
 		/// 指定したステージを初期状態で始める
 		void startStage(int stageIndex);
 
+		/// 指定したステージの盤面を初期状態で読み込む
+		void loadBoard(int stageIndex);
+
+		/// 起きたことを記録する
+		void pushEvent(event::GameEventType type, int row = -1, int col = -1, int value = 0);
+
 		/// 最初からやり直す(色と小物をリセットしてタイトルへ)
 		void resetAll();
 
