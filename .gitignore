@@ -1,0 +1,13 @@
+# ビルド出力
+build/
+build-*/
+out/
+
+# IDE
+.vs/
+.vscode/
+*.user
+CMakeUserPresets.json
+
+# 提出用 zip
+*.zip
