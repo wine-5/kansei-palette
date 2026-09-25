@@ -14,7 +14,7 @@ void AddRange(std::vector<int>& codepoints, int first, int last) {
 Font LoadJapaneseFont(const char* path, int fontSize, const char* usedText) {
     std::vector<int> codepoints;
     AddRange(codepoints, 0x0020, 0x007E);  // ASCII
-    AddRange(codepoints, 0x3000, 0x303F);  // 全角スペース・句読点・括弧(「」『』【】など)
+    AddRange(codepoints, 0x3000, 0x301F);  // 全角スペース・句読点・括弧(「」『』【】など)
     AddRange(codepoints, 0x3041, 0x3096);  // ひらがな
     AddRange(codepoints, 0x30A0, 0x30FF);  // カタカナ(長音符「ー」・中黒「・」含む)
     AddRange(codepoints, 0xFF01, 0xFF5E);  // 全角英数・記号(！？（）など)
