@@ -34,6 +34,8 @@ if(MSVC)
     set_property(DIRECTORY PROPERTY VS_STARTUP_PROJECT ${PROJECT_NAME})
     # VS のデバッガから起動したときもカレントディレクトリをプロジェクト直下にし、resources/ を読めるようにする
     set_target_properties(${PROJECT_NAME} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}")
+    # vcpkg の MSBuild 統合(vcpkg integrate install)が入った PC で余計な後処理が走らないようにする
+    set_target_properties(${PROJECT_NAME} PROPERTIES VS_GLOBAL_VcpkgEnabled false)
 else()
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
 endif()
