@@ -23,7 +23,10 @@ FetchContent_MakeAvailable(raylib)
 # ------------------------------------------------------------
 # ゲーム本体
 # ------------------------------------------------------------
-add_executable(${PROJECT_NAME} src/main.cpp)
+add_executable(${PROJECT_NAME}
+    src/main.cpp
+    src/jp_font.cpp
+)
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib)
 
 if(MSVC)
