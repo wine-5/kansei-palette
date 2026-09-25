@@ -60,7 +60,7 @@ void main()
     vec4 tint = colDiffuse * fragColor;
     vec3 color = texel.rgb * tint.rgb;
 
-    float h = hueOf(texel.rgb);
+    float h = hueOf(color); // 描画色で塗った単色の図形(DrawCube など)も色相で判定できるよう、tint を掛けた後の色で見る
     float k = band(h, 5.0, 22.0, 48.0) * restore.x
             + band(h, 232.0, 50.0, 78.0) * restore.y
             + band(h, 95.0, 45.0, 70.0) * restore.z;
