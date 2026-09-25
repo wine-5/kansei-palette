@@ -1,0 +1,7 @@
+{
+    // このワークスペースでは C/C++ 拡張(cpptools)で定義ジャンプ(F12)・補完を行う。
+    // ユーザー設定で IntelliSense が無効になっていても、ここで上書きする。
+    "C_Cpp.intelliSenseEngine": "default",
+    // clangd 拡張と同時に動くと競合するため、このワークスペースでは止める
+    "clangd.enable": false
+}

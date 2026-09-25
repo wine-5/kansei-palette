@@ -1,0 +1,17 @@
+{
+    "configurations": [
+        {
+            // raylib.h は初回の cmake 構成時に build/_deps/raylib-src にダウンロードされる
+            "name": "Windows (MSVC)",
+            "includePath": [
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/build/_deps/raylib-src/src"
+            ],
+            "defines": ["PLATFORM_DESKTOP"],
+            "cStandard": "c11",
+            "cppStandard": "c++17",
+            "intelliSenseMode": "windows-msvc-x64"
+        }
+    ],
+    "version": 4
+}
