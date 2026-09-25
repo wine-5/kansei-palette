@@ -55,6 +55,8 @@ namespace infrastructure::debug
 	{
 		if (IsKeyPressed(KEY_F1))
 			m_isVisible = !m_isVisible;
+		if (IsKeyPressed(KEY_F3))
+			m_isForcingFullRestore = !m_isForcingFullRestore;
 	}
 
 	void ShaderPreview::draw(render::RestoreShader& shader) const

@@ -1,17 +1,49 @@
 #include "Assets.h"
 #include "JpFont.h"
 #include "infrastructure/ui/UiText.h"
+#include <algorithm>
+#include <cstdio>
+#include <iterator>
 #include <string>
 
 namespace
 {
-	// TODO: assets/ と resources/ のどちらかに統一する
-	constexpr const char* ASSET_DIR{ "resources/" };
+	// 画像は tools/slice_sheet.py が art/ のシートから切り出したもの
+	constexpr const char* IMAGE_DIR{ "resources/images/" };
+	// ステージごとのタイルのテーマ(tiles/ の下のフォルダ名)。戻る色(赤・青・黄緑)に合わせている
+	constexpr const char* STAGE_TILE_THEMES[]{ "meadow", "sea", "forest" };
+	static_assert(std::size(STAGE_TILE_THEMES) == game::data::STAGES.size(), "ステージの数とテーマの数をそろえる");
 	constexpr const char* UI_FONT_PATH{ "resources/fonts/NotoSansJP-Regular-subset.ttf" };
 	constexpr int UI_FONT_SIZE{ 48 };
 
 	// 何も読み込んでいないときに返す空のテクスチャ(描いても何も表示されない)
 	const Texture2D EMPTY_TEXTURE{};
+
+	// game::board::TileType の順
+	constexpr const char* TILE_FILES[]{ "straight", "corner", "tee", "cross", "source", "goal", "locked", "blank" };
+	// game::data::PropType の順
+	constexpr const char* PROP_FILES[]{ "cottage", "flowers", "fence", "fountain", "lamp", "balloon", "tree", "pine" };
+	// infrastructure::resource::BackgroundLayer の順
+	constexpr const char* BACKGROUND_FILES[]{ "sky", "mountains", "village", "foreground" };
+
+	/**
+	 * @brief 画像を読み込み、拡大縮小・回転してもギザギザしないように設定する
+	 * @param path ファイルのパス
+	 * @param isOk 読み込めなかったら false にする
+	 * @return テクスチャ
+	 */
+	Texture2D loadSmoothTexture(const std::string& path, bool& isOk)
+	{
+		Texture2D texture{ LoadTexture(path.c_str()) };
+		if (!IsTextureValid(texture))
+		{
+			isOk = false;
+			return texture;
+		}
+		// 【Web の落とし穴】WebGL1 は 2 のべき乗でない画像にミップマップを作れないので、双線形補間だけにする
+		SetTextureFilter(texture, TEXTURE_FILTER_BILINEAR);
+		return texture;
+	}
 } // namespace
 
 namespace infrastructure::resource
@@ -27,21 +59,55 @@ namespace infrastructure::resource
 		}
 		m_uiFont = loadJapaneseFont(UI_FONT_PATH, UI_FONT_SIZE, usedText.c_str());
 
-		// TODO: 実装する(タイル 8 枚、小物 8 枚、主人公のコマ、パレットを ASSET_DIR から読み込む)
-		(void)ASSET_DIR;
-		return true;
+		bool isOk{ true };
+		for (size_t stage{}; stage < m_tiles.size(); ++stage)
+		{
+			for (size_t type{}; type < m_tiles[stage].size(); ++type)
+			{
+				for (int variant{}; variant < TILE_VARIANT_COUNT; ++variant)
+				{
+					char fileName[32]{};
+					std::snprintf(fileName, sizeof(fileName), "%s_%02d.png", TILE_FILES[type], variant);
+					m_tiles[stage][type][variant] = loadSmoothTexture(std::string(IMAGE_DIR) + "tiles/" + STAGE_TILE_THEMES[stage] + "/" + fileName, isOk);
+				}
+			}
+		}
+		for (size_t i{}; i < m_backgrounds.size(); ++i)
+			m_backgrounds[i] = loadSmoothTexture(std::string(IMAGE_DIR) + "bg/" + BACKGROUND_FILES[i] + ".png", isOk);
+		for (size_t i{}; i < m_props.size(); ++i)
+			m_props[i] = loadSmoothTexture(std::string(IMAGE_DIR) + "props/" + PROP_FILES[i] + ".png", isOk);
+
+		// TODO: 主人公のコマとパレットを読み込む
+		return isOk;
 	}
 
 	void Assets::unload()
 	{
-		// TODO: 実装する(読み込んだテクスチャをすべて UnloadTexture する)
+		for (auto& stage : m_tiles)
+			for (auto& type : stage)
+				for (Texture2D& texture : type)
+					UnloadTexture(texture);
+		for (Texture2D& texture : m_props)
+			UnloadTexture(texture);
+		for (Texture2D& texture : m_backgrounds)
+			UnloadTexture(texture);
+		m_tiles = {};
+		m_props = {};
+		m_backgrounds = {};
 		UnloadFont(m_uiFont);
 		m_uiFont = Font{};
 	}
 
-	const Texture2D& Assets::getTileTexture(game::board::TileType type) const
+	const Texture2D& Assets::getTileTexture(int stageIndex, game::board::TileType type, int variant) const
 	{
-		return m_tiles[static_cast<size_t>(type)];
+		const int stage{ std::clamp(stageIndex, 0, static_cast<int>(m_tiles.size()) - 1) };
+		const int wrapped{ ((variant % TILE_VARIANT_COUNT) + TILE_VARIANT_COUNT) % TILE_VARIANT_COUNT };
+		return m_tiles[stage][static_cast<size_t>(type)][wrapped];
+	}
+
+	const Texture2D& Assets::getBackground(BackgroundLayer layer) const
+	{
+		return m_backgrounds[static_cast<size_t>(layer)];
 	}
 
 	const Texture2D& Assets::getPropTexture(game::data::PropType type) const

@@ -49,6 +49,9 @@ namespace infrastructure::render
 		/// 読み込めているか
 		bool isLoaded() const { return m_isLoaded; }
 
+		/// シェーダー本体(Model の material に設定するときに使う)
+		const Shader& getShader() const { return m_shader; }
+
 		/**
 		 * @brief このシェーダーで描くときの描画色を作る
 		 * @param base 色味(通常は WHITE)

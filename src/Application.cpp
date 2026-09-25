@@ -5,7 +5,7 @@ void Application::init()
 {
 	m_assets.load();
 	m_restoreShader.load();
-	m_worldRenderer.init(m_assets);
+	m_worldRenderer.init(m_assets, m_restoreShader);
 	m_shaderPreview.init();
 }
 
@@ -24,8 +24,8 @@ void Application::runFrame()
 	m_effects.onEvents(events, m_flow);
 	m_effects.update(dt);
 	m_worldRenderer.update(dt, m_flow, events, m_effects.getCameraShake());
-	m_restoreShader.setRestoreLevel(m_flow.getRestore());
 	m_shaderPreview.update();
+	m_restoreShader.setRestoreLevel(m_shaderPreview.isForcingFullRestore() ? game::flow::RestoreLevel{ 1.0f, 1.0f, 1.0f } : m_flow.getRestore());
 
 	draw();
 }
@@ -56,7 +56,6 @@ infrastructure::ui::UiAction Application::updateUi()
 void Application::draw()
 {
 	BeginDrawing();
-	ClearBackground(RAYWHITE);
 
 	m_worldRenderer.draw(m_flow, m_restoreShader);
 	BeginMode3D(m_worldRenderer.getCamera());

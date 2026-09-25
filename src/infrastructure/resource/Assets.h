@@ -8,6 +8,20 @@
 
 namespace infrastructure::resource
 {
+	/// タイルの見た目違いの数(tools/slice_sheet.py の VARIANTS_PER_KIND と同じ)
+	constexpr int TILE_VARIANT_COUNT{ 4 };
+
+	/**
+	 * @brief 背景の帯(奥から順)
+	 */
+	enum class BackgroundLayer
+	{
+		Sky,       // 空
+		Mountains, // 遠くの山と城
+		Village,   // 村と畑
+		Foreground // 手前の花と柵(画面の下に重ねる)
+	};
+
 	/**
 	 * @brief 画像・フォントをまとめて読み込み、持っておく
 	 * @details InitWindow() の後に load() を呼ぶ。音は infrastructure::audio::Audio が持つ
@@ -27,10 +41,19 @@ namespace infrastructure::resource
 
 		/**
 		 * @brief タイルの画像を取得する
+		 * @param stageIndex ステージ番号(ステージごとにテーマが違う)
 		 * @param type タイルの種類
+		 * @param variant 見た目違いの番号(TILE_VARIANT_COUNT で割った余りを使う)
 		 * @return テクスチャ
 		 */
-		const Texture2D& getTileTexture(game::board::TileType type) const;
+		const Texture2D& getTileTexture(int stageIndex, game::board::TileType type, int variant) const;
+
+		/**
+		 * @brief 背景の帯の画像を取得する
+		 * @param layer 帯
+		 * @return テクスチャ
+		 */
+		const Texture2D& getBackground(BackgroundLayer layer) const;
 
 		/**
 		 * @brief 小物の画像を取得する
@@ -61,7 +84,9 @@ namespace infrastructure::resource
 		const Font& getUiFont() const { return m_uiFont; }
 
 	private:
-		std::array<Texture2D, 8> m_tiles{};  // game::board::TileType の順
+		// [ステージ][game::board::TileType の順][見た目違い]
+		std::array<std::array<std::array<Texture2D, TILE_VARIANT_COUNT>, 8>, game::data::STAGES.size()> m_tiles{};
+		std::array<Texture2D, 4> m_backgrounds{}; // BackgroundLayer の順
 		std::array<Texture2D, 8> m_props{};  // game::data::PropType の順
 		std::array<std::vector<Texture2D>, 7> m_heroFrames{}; // game::hero::HeroPose の順
 		Texture2D m_palette{};

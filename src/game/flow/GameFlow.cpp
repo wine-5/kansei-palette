@@ -1,4 +1,5 @@
 #include "GameFlow.h"
+#include "game/board/StageParser.h"
 
 namespace game::flow
 {
@@ -46,7 +47,11 @@ namespace game::flow
 
 	void GameFlow::resetAll()
 	{
-		// TODO: 実装する(色・小物・ステージ番号を初期化してタイトルへ)
+		// TODO: 実装する(色・小物を初期化する)
+		// タイトルでも箱庭の上に盤面を見せるため、ステージ 1 の盤面を読み込んでおく
+		m_stageIndex = 0;
+		if (const auto board{ board::parseStage(data::STAGES[0].m_layout) })
+			m_board = *board;
 		changePhase(GamePhase::Title);
 	}
 

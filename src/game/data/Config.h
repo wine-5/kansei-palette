@@ -22,7 +22,7 @@ namespace game::data
 
 	// --- タイル ---
 	constexpr float TILE_SIZE{ 1.0f };           // 1 マスの大きさ
-	constexpr float TILE_TEXTURE_SCALE{ 1.155f }; // 接点が枠の外に出るため、画像はマスより大きく貼る
+	constexpr float TILE_TEXTURE_SCALE{ 1.16f };  // 接点が板の外に出るため、画像はマスより大きく貼る(tools/slice_sheet.py の TILE_PLATE_SCALE と同じ)
 	constexpr float TILE_SPRING_STIFFNESS{ 260.0f };
 	constexpr float TILE_SPRING_DAMPING{ 23.0f };
 	constexpr float TILE_TAP_SCALE{ 0.07f };      // タップ時に一瞬大きくなる割合

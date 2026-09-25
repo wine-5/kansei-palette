@@ -30,11 +30,13 @@ src/
 tests/                  盤面ロジックのテスト
 resources/              画像・音・フォント(Web 版では index.data に埋め込まれる)
   images/ sounds/ fonts/
+art/                    画像の元になるアセットシート(ゲームからは直接読まない)
 web/shell.html          Web 版の index.html のひな形
 tools/
   web.ps1               Web のビルド / ローカルサーバー / zip 作成(Windows)
   serve_web.py          キャッシュ無効のローカルサーバー
   subset_font.py        日本語フォントのサブセット化
+  slice_sheet.py        アセットシートを透過 PNG に切り出して resources/images/ に保存
 .github/workflows/
   pages.yml             main への push で GitHub Pages に自動公開
 docs/
