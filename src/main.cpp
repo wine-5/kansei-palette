@@ -48,6 +48,7 @@ void LoadResources() {
     // Web では --preload-file で仮想ファイルシステムの /resources に置かれるので同じパスで読める。
     // Texture は GPU 側の画像なので InitWindow の後でないと読み込めない(DxLib の LoadGraph と同じ感覚)。
     g.palette = LoadTexture("resources/images/palette.png");
+    SetTextureFilter(g.palette, TEXTURE_FILTER_BILINEAR);  // 回転・拡大時のギザギザを抑える(ドット絵なら外す)
     // Web では読み込みが重くなるので、フォントファイルは tools/subset_font.py で縮小したものを使う
     g.font = LoadJapaneseFont("resources/fonts/NotoSansJP-Regular-subset.ttf", kFontSize, AllTexts().c_str());
 }
