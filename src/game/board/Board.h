@@ -48,7 +48,7 @@ namespace game::board
 
 		/**
 		 * @brief 電源から幅優先探索で通電を再計算する
-		 * @details 向かい合う辺の両方に接点があるときだけ電気が渡る(要件定義 3章「通電の判定」)。
+		 * @details 向かい合う辺の両方に接点があるときだけ電気が渡る。
 		 */
 		void recalculatePower();
 

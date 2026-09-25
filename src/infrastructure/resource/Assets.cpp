@@ -5,7 +5,7 @@
 
 namespace
 {
-	// TODO: 要件定義 7章は assets/、テンプレートは resources/。どちらかに統一する
+	// TODO: assets/ と resources/ のどちらかに統一する
 	constexpr const char* ASSET_DIR{ "resources/" };
 	constexpr const char* UI_FONT_PATH{ "resources/fonts/NotoSansJP-Regular-subset.ttf" };
 	constexpr int UI_FONT_SIZE{ 48 };

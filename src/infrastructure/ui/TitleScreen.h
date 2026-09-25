@@ -10,7 +10,7 @@ namespace infrastructure::resource
 namespace infrastructure::ui
 {
 	/**
-	 * @brief タイトル画面とエンディング画面の UI(要件定義 6章「タイトル画面」)
+	 * @brief タイトル画面とエンディング画面の UI
 	 * @details 初回は白黒の「かんせいのパレット」と「はじめる」。
 	 *          エンディング後は文字が 1 文字ずつ色づき、「もういちど あそぶ」になる。
 	 */

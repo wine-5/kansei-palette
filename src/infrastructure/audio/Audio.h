@@ -5,7 +5,7 @@
 namespace infrastructure::audio
 {
 	/**
-	 * @brief 効果音を鳴らす(要件定義 6章「サウンド」)
+	 * @brief 効果音を鳴らす
 	 * @details 【Web の落とし穴: 自動再生制限】
 	 *          ブラウザは、ユーザーが操作する前のページで音を鳴らすことを禁止している。
 	 *          操作前に InitAudioDevice() すると無音になるため、GameStarted(「はじめる」のクリック)を

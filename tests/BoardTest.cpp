@@ -1,6 +1,6 @@
 // 盤面ロジックのテスト(raylib なしで動く)。
 // 実行: cmake --build build --target KanseiTests && build\Debug\KanseiTests.exe
-// 確認すること(要件定義 FR-04, FR-06):
+// 確認すること:
 //   - 3 ステージとも、初期状態ではクリアしていない
 //   - 解答表どおりに回すとクリアできる
 #include "game/board/StageParser.h"
@@ -29,7 +29,7 @@ namespace
 			++g_failCount;
 	}
 
-	/// 要件定義 4章の解答表(十字タイルは向きが任意なので含めない)
+	/// 各ステージの解答(十字タイルは向きが任意なので含めない)
 	const std::vector<std::vector<SolutionStep>> SOLUTIONS{
 		{ { 4, 1, 1 }, { 4, 2, 3 }, { 3, 2, 0 }, { 2, 2, 1 }, { 2, 3, 1 }, { 2, 4, 3 }, { 1, 4, 0 } },
 		{ { 2, 2, 2 }, { 2, 1, 1 }, { 2, 0, 0 }, { 2, 3, 1 } },
@@ -47,7 +47,7 @@ namespace
 		check(board->countGoals() > 0, "ゴールがある");
 		check(!board->isCleared(), "初期状態ではクリアしていない");
 
-		// 電源・ゴール・ロック・空きは回らない(FR-03)
+		// 電源・ゴール・ロック・空きは回らない
 		bool areFixedTilesStable{ true };
 		for (int row{}; row < game::board::Board::SIZE; ++row)
 		{

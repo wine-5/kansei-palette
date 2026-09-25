@@ -10,7 +10,7 @@ namespace infrastructure::resource
 namespace infrastructure::ui
 {
 	/**
-	 * @brief プレイ中の HUD(要件定義 6章「HUD」)
+	 * @brief プレイ中の HUD
 	 * @details 左上: 「STAGE n / 3」、ステージ名、取り戻した色の丸 3 つ。
 	 *          右上: 「やりなおす (R)」「音 ON/OFF」ボタン。
 	 *          下: ヒント文と「ゴール 点灯数 / 全体」。

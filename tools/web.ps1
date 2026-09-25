@@ -54,6 +54,11 @@ if ($Action -eq 'stop') {
     exit 0
 }
 
+# cmake が見つからないと、以降のコマンドが失敗しても終了コード 0 のまま終わってしまうので先に確かめる
+if (-not (Get-Command cmake -ErrorAction SilentlyContinue)) {
+    throw 'cmake が見つかりません。CMake をインストールし、PATH に追加してください'
+}
+
 # --- Ninja を探す(無ければ Visual Studio 同梱のものを使う) ---
 if (-not (Get-Command ninja -ErrorAction SilentlyContinue)) {
     $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"

@@ -9,7 +9,7 @@
 namespace infrastructure::resource
 {
 	/**
-	 * @brief 画像・フォントをまとめて読み込み、持っておく(要件定義 7章「アセット仕様」)
+	 * @brief 画像・フォントをまとめて読み込み、持っておく
 	 * @details InitWindow() の後に load() を呼ぶ。音は infrastructure::audio::Audio が持つ
 	 *          (ブラウザの自動再生制限のため、最初のクリック後に読み込む)。
 	 */

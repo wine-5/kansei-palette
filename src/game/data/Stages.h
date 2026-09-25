@@ -4,7 +4,7 @@
 namespace game::data
 {
 	/**
-	 * @brief ステージクリアで世界に戻る色の帯(要件定義 5章「色の復元」)
+	 * @brief ステージクリアで世界に戻る色の帯
 	 */
 	enum class HueBand
 	{
@@ -14,7 +14,7 @@ namespace game::data
 	};
 
 	/**
-	 * @brief 箱庭の小物の種類(要件定義 7章「小物とパレット」)
+	 * @brief 箱庭の小物の種類
 	 */
 	enum class PropType
 	{
@@ -56,7 +56,7 @@ namespace game::data
 		int m_propCount{};
 	};
 
-	/// 全ステージ(要件定義 4章。初期状態・解答は tests/BoardTest.cpp で確認する)
+	/// 全ステージ(初期状態・解答は tests/BoardTest.cpp で確認する)
 	inline constexpr std::array<StageDefinition, 3> STAGES{ {
 		{ "あか",
 			"C2 B0 S1 B0 G2\n"

@@ -5,7 +5,7 @@
 namespace infrastructure::render
 {
 	/**
-	 * @brief 色の復元シェーダー(要件定義 5章「色の復元」)
+	 * @brief 色の復元シェーダー
 	 * @details ピクセルの色相で判定し、まだ戻っていない色相は輝度だけのグレーにする。
 	 *
 	 *          【Web の落とし穴: シェーダーのバージョン】
@@ -16,13 +16,18 @@ namespace infrastructure::render
 	 *          raylib は DrawTexture / DrawBillboard などをまとめて後から GPU に送るため、
 	 *          描画の合間に SetShaderValue で値を変えても、まとめて描かれた全体に最後の値が使われる。
 	 *          タイルごとの通電度は uniform ではなく、描画色(tint)のアルファに入れて渡す。
+	 *
+	 *          【このシェーダーでの tint のアルファの意味】
+	 *          不透明度ではなく「世界の復元度に従う度合い」(255 = 世界に従う、0 = 完全に彩色)。
+	 *          WHITE のまま描けば世界の復元度に従う。通電したタイルは makeTint() で作った色で描く。
+	 *          透明度は画像のアルファだけが使われる。
 	 */
 	class RestoreShader
 	{
 	public:
 		/**
 		 * @brief シェーダーを読み込む
-		 * @return 読み込めたら true(失敗したら企画書 8章の代替案に切り替える)
+		 * @return 読み込めたら true(失敗したら、グレーと彩色のクロスフェードに切り替える)
 		 */
 		bool load();
 
@@ -43,6 +48,14 @@ namespace infrastructure::render
 
 		/// 読み込めているか
 		bool isLoaded() const { return m_isLoaded; }
+
+		/**
+		 * @brief このシェーダーで描くときの描画色を作る
+		 * @param base 色味(通常は WHITE)
+		 * @param selfRestore 世界の復元度に関係なく色を付ける度合い(0〜1。通電度を渡す)
+		 * @return DrawTexture などに渡す tint
+		 */
+		static Color makeTint(Color base, float selfRestore);
 
 	private:
 		Shader m_shader{};
