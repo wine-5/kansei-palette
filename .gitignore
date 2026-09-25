@@ -15,3 +15,7 @@ CMakeUserPresets.json
 
 # 提出用 zip
 *.zip
+
+# Python のキャッシュ
+__pycache__/
+*.pyc
