@@ -11,11 +11,12 @@ include(FetchContent)
 set(RAYLIB_VERSION 6.0)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)  # raylib 付属サンプルはビルドしない
 set(BUILD_GAMES    OFF CACHE BOOL "" FORCE)
+# git clone ではなくアーカイブで取得する(Windows でフォルダが深いと git の "Filename too long" で失敗するため)
 FetchContent_Declare(
     raylib
-    GIT_REPOSITORY https://github.com/raysan5/raylib.git
-    GIT_TAG        ${RAYLIB_VERSION}
-    GIT_SHALLOW    TRUE
+    URL      https://github.com/raysan5/raylib/archive/refs/tags/${RAYLIB_VERSION}.tar.gz
+    URL_HASH SHA256=2b3ee1e2120c7a0796b33062c7e9a694dd8a8caa56a96319ac8c8ecf54a90d0b
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 # Web ビルド時は raylib 側が EMSCRIPTEN を検出して PLATFORM=Web(PLATFORM_WEB 定義)になる
 FetchContent_MakeAvailable(raylib)
