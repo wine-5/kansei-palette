@@ -17,8 +17,7 @@ namespace infrastructure::input
 		{
 			pickCell(camera, GetMousePosition(), input.m_hoveredRow, input.m_hoveredCol);
 			// タッチのタップも raylib がマウスの左クリックとして扱う
-			input.m_isPointerPressed = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
-			if (input.m_isPointerPressed)
+			if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
 			{
 				input.m_tappedRow = input.m_hoveredRow;
 				input.m_tappedCol = input.m_hoveredCol;
