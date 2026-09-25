@@ -22,10 +22,12 @@ namespace text {
 constexpr const char* kTitle = "感性パレット";
 constexpr const char* kHint = "矢印キーで円を動かせます";
 constexpr const char* kSample = "日本語テキスト表示のサンプル。ひらがな・カタカナ・漢字ＯＫ！";
+constexpr const char* kClickToStart = "クリックしてスタート";
+constexpr const char* kClickForSe = "クリックで効果音";
 }  // namespace text
 
 std::string AllTexts() {
-    return std::string(text::kTitle) + text::kHint + text::kSample;
+    return std::string(text::kTitle) + text::kHint + text::kSample + text::kClickToStart + text::kClickForSe;
 }
 
 constexpr int kFontSize = 48;  // アトラスに焼くサイズ(表示する最大サイズに合わせる)
@@ -39,9 +41,37 @@ struct Game {
     Texture2D palette{};
     Font font{};
     float time = 0.0f;
+
+    bool audioStarted = false;  // 最初のクリック後に true
+    Sound se{};
+    Music bgm{};
 };
 
 Game g;
+
+// 【Web の落とし穴: 自動再生制限】
+// ブラウザはユーザーが操作(クリック・キー入力・タップ)する前のページで音を鳴らすことを禁止している。
+// 操作前に InitAudioDevice() すると音声出力(AudioContext)が停止状態で作られ、PlaySound しても無音になる。
+// そこで「クリックしてスタート」画面を挟み、最初の操作を受けてから音声デバイスを初期化・読み込み・再生する。
+// ネイティブでも同じ流れにしておくと、Web だけ挙動が違うという事故を防げる。
+void StartAudio() {
+    InitAudioDevice();
+    // Sound: 全体をメモリに展開する。短い効果音向け(DxLib の LoadSoundMem 相当)
+    g.se = LoadSound("resources/sounds/se_click.wav");
+    // Music: 少しずつ読み込みながら再生する(ストリーミング)。長い BGM 向け
+    g.bgm = LoadMusicStream("resources/sounds/bgm_loop.wav");
+    g.bgm.looping = true;
+    SetMusicVolume(g.bgm, 0.6f);
+    PlayMusicStream(g.bgm);
+    g.audioStarted = true;
+}
+
+void StopAudio() {
+    if (!g.audioStarted) return;
+    UnloadMusicStream(g.bgm);
+    UnloadSound(g.se);
+    CloseAudioDevice();
+}
 
 void LoadResources() {
     // パスは実行時のカレントディレクトリからの相対パス。
@@ -66,6 +96,18 @@ void DrawTextJp(const char* str, float x, float y, float size, Color color) {
 void Update(float dt) {
     g.time += dt;
 
+    const bool clicked = IsMouseButtonPressed(MOUSE_BUTTON_LEFT);  // タッチ操作でも true になる
+    if (!g.audioStarted) {
+        if (clicked || GetKeyPressed() != 0) StartAudio();
+        return;  // スタート前はゲームを進めない
+    }
+
+    // Music はバッファを補充するため毎フレーム呼ぶ必要がある(呼ばないと音が途切れる・止まる)。
+    // Web ではタブが非表示の間メインループが止まるので、BGM も止まる。
+    UpdateMusicStream(g.bgm);
+
+    if (clicked) PlaySound(g.se);
+
     // 矢印キーで円を動かす
     if (IsKeyDown(KEY_RIGHT)) g.circlePos.x += g.circleSpeed * dt;
     if (IsKeyDown(KEY_LEFT))  g.circlePos.x -= g.circleSpeed * dt;
@@ -88,6 +130,17 @@ void Draw() {
     DrawTextJp(text::kTitle, 40, 40, 48, DARKGRAY);
     DrawTextJp(text::kSample, 40, 110, 24, GRAY);
     DrawTextJp(text::kHint, 40, kScreenHeight - 50.0f, 24, GRAY);
+    DrawTextJp(text::kClickForSe, 40, kScreenHeight - 84.0f, 24, GRAY);
+
+    if (!g.audioStarted) {
+        // スタート画面: 半透明の黒で覆い、中央に案内を出す
+        DrawRectangle(0, 0, kScreenWidth, kScreenHeight, Fade(BLACK, 0.6f));
+        const float size = 40.0f;
+        const Vector2 textSize = MeasureTextEx(g.font, text::kClickToStart, size, 1.0f);
+        const float alpha = 0.6f + 0.4f * (g.time - static_cast<int>(g.time));  // ゆっくり点滅
+        DrawTextJp(text::kClickToStart, (kScreenWidth - textSize.x) / 2, (kScreenHeight - textSize.y) / 2,
+                   size, Fade(RAYWHITE, alpha));
+    }
 
     DrawFPS(10, 10);
 
@@ -121,6 +174,7 @@ int main() {
 #endif
 
     // Web ではここに到達しない(タブを閉じればブラウザが全て解放する)
+    StopAudio();
     UnloadResources();
     CloseWindow();
     return 0;
