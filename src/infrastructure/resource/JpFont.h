@@ -17,4 +17,14 @@ namespace infrastructure::resource
 	 * @return 読み込んだフォント。不要になったら UnloadFont() で解放する
 	 */
 	Font loadJapaneseFont(const char* path, int fontSize, const char* usedText);
+
+	/**
+	 * @brief 指定した文章に含まれる文字だけでフォントを読み込む
+	 * @details タイトルのように、少ない文字を大きく表示するときに使う(かな全体を焼き込むとアトラスが大きくなりすぎる)。
+	 * @param path フォントファイルのパス
+	 * @param fontSize アトラスに焼き込むピクセルサイズ
+	 * @param text 表示する文章(UTF-8)
+	 * @return 読み込んだフォント。不要になったら UnloadFont() で解放する
+	 */
+	Font loadFontForText(const char* path, int fontSize, const char* text);
 } // namespace infrastructure::resource

@@ -86,8 +86,7 @@ namespace game::flow
 
 	void GameFlow::updateTitle(const GameInput& input)
 	{
-		// TODO: 「はじめる」ボタンができたら、画面のクリックでは始めないようにする
-		if (!input.m_isConfirmPressed && !input.m_isPointerPressed)
+		if (!input.m_isConfirmPressed)
 			return;
 		pushEvent(event::GameEventType::GameStarted);
 		startStage(0);
@@ -186,8 +185,7 @@ namespace game::flow
 
 	void GameFlow::updateClearCard(const GameInput& input)
 	{
-		// TODO: 「つぎへ」ボタンができたら、画面のクリックでは進まないようにする
-		if (input.m_isConfirmPressed || input.m_isPointerPressed)
+		if (input.m_isConfirmPressed)
 			startStage(m_stageIndex + 1);
 	}
 
@@ -197,8 +195,7 @@ namespace game::flow
 		constexpr float INPUT_DELAY{ 1.5f };
 		if (m_phaseTime < INPUT_DELAY)
 			return;
-		// TODO: 「もういちど あそぶ」ボタンができたら、画面のクリックでは始めないようにする
-		if (!input.m_isConfirmPressed && !input.m_isPointerPressed)
+		if (!input.m_isConfirmPressed)
 			return;
 		// 色と小物をリセットして、ステージ 1 から
 		resetAll();

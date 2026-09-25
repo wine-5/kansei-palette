@@ -77,6 +77,7 @@ void Application::draw()
 	}
 
 	m_shaderPreview.draw(m_restoreShader);
-	DrawFPS(10, 10);
+	if (m_shaderPreview.isVisible())
+		DrawFPS(GetScreenWidth() - 100, GetScreenHeight() - 30); // 確認画面(F1)を開いているときだけ出す
 	EndDrawing();
 }

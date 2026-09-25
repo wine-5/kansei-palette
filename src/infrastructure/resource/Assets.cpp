@@ -14,7 +14,20 @@ namespace
 	constexpr const char* STAGE_TILE_THEMES[]{ "meadow", "sea", "forest" };
 	static_assert(std::size(STAGE_TILE_THEMES) == game::data::STAGES.size(), "ステージの数とテーマの数をそろえる");
 	constexpr const char* UI_FONT_PATH{ "resources/fonts/NotoSansJP-Regular-subset.ttf" };
-	constexpr int UI_FONT_SIZE{ 48 };
+	constexpr int UI_FONT_SIZE{ 48 };    // UI の文字(一番大きく表示するサイズに合わせる)
+	constexpr int TITLE_FONT_SIZE{ 96 }; // タイトルの文字
+
+	/// 高 DPI の画面では、実際の画素数に合わせて大きく焼き込む(拡大されてぼやけるのを防ぐ)
+	int scaledFontSize(int size)
+	{
+#if defined(PLATFORM_WEB)
+		// Web 版は高 DPI 表示に未対応(キャンバスは 1280×720 のまま)なので、倍率を掛けない
+		return size;
+#else
+		const Vector2 scale{ GetWindowScaleDPI() };
+		return static_cast<int>(size * std::max(1.0f, scale.x));
+#endif
+	}
 
 	// 何も読み込んでいないときに返す空のテクスチャ(描いても何も表示されない)
 	const Texture2D EMPTY_TEXTURE{};
@@ -74,7 +87,8 @@ namespace infrastructure::resource
 			usedText += stage.m_name;
 			usedText += stage.m_hint;
 		}
-		m_uiFont = loadJapaneseFont(UI_FONT_PATH, UI_FONT_SIZE, usedText.c_str());
+		m_uiFont = loadJapaneseFont(UI_FONT_PATH, scaledFontSize(UI_FONT_SIZE), usedText.c_str());
+		m_titleFont = loadFontForText(UI_FONT_PATH, scaledFontSize(TITLE_FONT_SIZE), ui::TEXT_TITLE);
 
 		bool isOk{ true };
 		for (size_t stage{}; stage < m_tiles.size(); ++stage)
@@ -113,6 +127,8 @@ namespace infrastructure::resource
 		m_backgrounds = {};
 		UnloadFont(m_uiFont);
 		m_uiFont = Font{};
+		UnloadFont(m_titleFont);
+		m_titleFont = Font{};
 	}
 
 	const Texture2D& Assets::getTileTexture(int stageIndex, game::board::TileType type, int variant) const
