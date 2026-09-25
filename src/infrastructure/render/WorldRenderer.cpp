@@ -77,6 +77,10 @@ namespace
 	constexpr float BLOCKED_KICK{ 90.0f };
 	// ホバーで浮かせる速さ(毎秒)
 	constexpr float HOVER_RATE{ 14.0f };
+	// タイルのアニメーション(バネで回る・タップで跳ねる・ホバーで浮く)を使うか。
+	// 動かすと画像の細かい模様がちらついて見えるので、いったん止めて回転は即座に切り替える。
+	// 見た目の演出は、あとでパーティクルやシェーダーで補う
+	constexpr bool IS_TILE_ANIMATION_ENABLED{ false };
 
 	// 通電中のタイルの光: タイルより少し大きく、タイルの種類ごとの色で、ゆっくり脈打つ
 	constexpr float GLOW_SIZE{ 1.9f };
@@ -208,6 +212,13 @@ namespace infrastructure::render
 
 				const bool isHovered{ isPlaying && row == input.m_hoveredRow && col == input.m_hoveredCol && game::board::isRotatable(tile.m_type) };
 				visual.m_hover = core::approachExp(visual.m_hover, isHovered ? 1.0f : 0.0f, HOVER_RATE, dt);
+
+				if constexpr (!IS_TILE_ANIMATION_ENABLED)
+				{
+					visual.m_angle.snapTo(tile.m_rotation * 90.0f);
+					visual.m_tapScale = 0.0f;
+					visual.m_hover = 0.0f;
+				}
 			}
 		}
 
