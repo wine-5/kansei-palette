@@ -1,6 +1,7 @@
 #pragma once
 #include "game/flow/GameFlow.h"
 #include "infrastructure/audio/Audio.h"
+#include "infrastructure/debug/ShaderPreview.h"
 #include "infrastructure/fx/Effects.h"
 #include "infrastructure/input/InputReader.h"
 #include "infrastructure/render/RestoreShader.h"
@@ -32,7 +33,7 @@ private:
 	infrastructure::ui::UiAction updateUi();
 
 	/// 描く
-	void draw() const;
+	void draw();
 
 	game::flow::GameFlow m_flow;
 	infrastructure::resource::Assets m_assets;
@@ -44,4 +45,5 @@ private:
 	infrastructure::ui::TitleScreen m_titleScreen;
 	infrastructure::ui::Hud m_hud;
 	infrastructure::ui::ClearCard m_clearCard;
+	infrastructure::debug::ShaderPreview m_shaderPreview; // F1: 色の復元シェーダーの確認
 };

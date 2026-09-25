@@ -6,6 +6,7 @@ void Application::init()
 	m_assets.load();
 	m_restoreShader.load();
 	m_worldRenderer.init(m_assets);
+	m_shaderPreview.init();
 }
 
 void Application::runFrame()
@@ -24,6 +25,7 @@ void Application::runFrame()
 	m_effects.update(dt);
 	m_worldRenderer.update(dt, m_flow, events, m_effects.getCameraShake());
 	m_restoreShader.setRestoreLevel(m_flow.getRestore());
+	m_shaderPreview.update();
 
 	draw();
 }
@@ -31,6 +33,7 @@ void Application::runFrame()
 void Application::shutdown()
 {
 	m_audio.unload();
+	m_shaderPreview.unload();
 	m_worldRenderer.unload();
 	m_restoreShader.unload();
 	m_assets.unload();
@@ -50,7 +53,7 @@ infrastructure::ui::UiAction Application::updateUi()
 	return infrastructure::ui::UiAction{};
 }
 
-void Application::draw() const
+void Application::draw()
 {
 	BeginDrawing();
 	ClearBackground(RAYWHITE);
@@ -74,6 +77,7 @@ void Application::draw() const
 	case game::flow::GamePhase::Clearing: m_hud.draw(m_flow, m_assets); break;
 	}
 
+	m_shaderPreview.draw(m_restoreShader);
 	DrawFPS(10, 10);
 	EndDrawing();
 }
