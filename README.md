@@ -1,6 +1,6 @@
-# KanseiPalette
+# かんせいのパレット(KanseiPalette)
 
-ゲームジャム用の C++ / raylib テンプレート。同じソースからネイティブ版(Windows / Linux / macOS)と Web 版(Emscripten → itch.io)をビルドできます。
+ゲームジャム用の C++ / raylib のゲーム。同じソースからネイティブ版(Windows / Linux / macOS)と Web 版(Emscripten → itch.io)をビルドできます。
 
 - raylib 6.0(CMake の FetchContent で自動取得)
 - Emscripten 6.0.10(emsdk)
@@ -22,8 +22,12 @@
 ```
 CMakeLists.txt          ネイティブ / Web 共通のビルド設定
 src/
-  main.cpp              メインループ(Update / Draw)とサンプル(画像・日本語・音)
-  jp_font.h / .cpp      日本語フォント読み込み(使う文字を集めて LoadFontEx)
+  Main.cpp              ウィンドウ作成とメインループ
+  Application.h / .cpp  毎フレームの処理をつなぐ
+  core/                 どこからでも使う小さな部品(raylib 禁止)
+  game/                 ゲームのルール(raylib 禁止)
+  infrastructure/       描画・入力・音・リソース・演出・UI(raylib を使う)
+tests/                  盤面ロジックのテスト
 resources/              画像・音・フォント(Web 版では index.data に埋め込まれる)
   images/ sounds/ fonts/
 web/shell.html          Web 版の index.html のひな形
@@ -36,23 +40,24 @@ tools/
 docs/
   SETUP.md              セットアップ手順書(emsdk・ビルド・itch.io 提出)
   DXLIB_TO_RAYLIB.md    DxLib → raylib 対応表
+  architecture.md       アーキテクチャ設計(層の分け方・1 フレームの流れ)
+  企画書.md / 要件定義書.md
 ```
 
-## ゲームを書き始めるとき
+## 開発するとき
 
-- 状態は `src/main.cpp` の `Game` 構造体に足し、処理は `Update(dt)`、描画は `Draw()` に書く
-- 画面に出す日本語は `text` 名前空間に定義して `AllTexts()` に追加する(しないと「?」になる)
+- 設計は [docs/architecture.md](docs/architecture.md)。ルールは `game/`、見た目・音・入力は `infrastructure/` に書く
+- 画面に出す日本語は `infrastructure/ui/UiText.h`(ステージ名・ヒントは `game/data/Stages.h`)に書く。ここに無い漢字は「?」になる
+- 調整用の数値は `game/data/Config.h` に集める
 - 画像・音は `resources/` に置き、`"resources/..."` のパスで読み込む
-- 音の読み込み・再生は `StartAudio()`(最初のクリック後)以降に行う
-- 必要になったら Dear ImGui(デバッグ UI)や Box2D(2D 物理)を `FetchContent` で追加する
 
 ## Web 版の落とし穴(詳細は各ソースのコメント)
 
 | 項目 | 内容 | 該当箇所 |
 |---|---|---|
-| メインループ | `while` で回すとブラウザが固まる。`emscripten_set_main_loop` に 1 フレーム分の関数を渡す | `src/main.cpp` の `main()` |
+| メインループ | `while` で回すとブラウザが固まる。`emscripten_set_main_loop` に 1 フレーム分の関数を渡す | `src/Main.cpp` |
 | ファイルアクセス | `--preload-file` で `resources/` を `index.data` に詰めて仮想 FS から読む。`file://` では起動しない | `CMakeLists.txt` |
-| 自動再生制限 | クリック・キー入力の前に音声を初期化すると無音。最初の操作後に `InitAudioDevice()` | `src/main.cpp` の `StartAudio()` |
+| 自動再生制限 | クリック・キー入力の前に音声を初期化すると無音。最初の操作後に `InitAudioDevice()` | `src/infrastructure/audio/Audio.h` |
 | スレッド | `std::thread` は使わない(itch.io で必要なヘッダ設定が面倒) | `CMakeLists.txt` |
 | 待ち処理 | `WaitTime()` や待ちループは使わない。タイマー変数で状態を進める | `docs/DXLIB_TO_RAYLIB.md` |
 
