@@ -49,3 +49,45 @@ if(NOT EMSCRIPTEN)
                 "${CMAKE_SOURCE_DIR}/resources" "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources"
     )
 endif()
+
+# ------------------------------------------------------------
+# Web (Emscripten) 専用の設定
+# ------------------------------------------------------------
+if(EMSCRIPTEN)
+    # 出力を <build>/web/index.{html,js,wasm,data} にする。
+    # このフォルダの中身をそのまま zip すれば itch.io に提出できる。
+    set_target_properties(${PROJECT_NAME} PROPERTIES
+        OUTPUT_NAME "index"
+        SUFFIX ".html"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/web"
+    )
+
+    target_link_options(${PROJECT_NAME} PRIVATE
+        # 【Web の落とし穴: ファイルアクセス】
+        # ブラウザの wasm は PC のファイルを直接読めない。resources/ を仮想ファイルシステムに
+        # 詰めた index.data を生成し、起動時にダウンロードさせる(LoadTexture("resources/...") がそのまま動く)。
+        "--preload-file=${CMAKE_SOURCE_DIR}/resources@resources"
+        "--shell-file=${CMAKE_SOURCE_DIR}/web/shell.html"
+        -sALLOW_MEMORY_GROWTH=1     # 画像・音を読み込むとメモリが足りなくなるので自動拡張を許可
+        -sSTACK_SIZE=1048576        # 既定の 64KB だとフォントアトラス生成などで溢れることがある
+        # 【Web の落とし穴: スレッド】
+        # std::thread / pthread は既定では使えない(使うには COOP/COEP ヘッダが必要で itch.io では面倒)。
+        # 重い処理はフレームをまたいで少しずつ進める設計にする。
+    )
+    target_compile_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Release,MinSizeRel>:-Os>)
+    target_link_options(${PROJECT_NAME} PRIVATE $<$<CONFIG:Release,MinSizeRel>:-Os>)
+
+    # resources/ にファイルを追加・変更したら index.data を作り直すよう、リンクの依存に入れておく
+    file(GLOB_RECURSE RESOURCE_FILES CONFIGURE_DEPENDS "${CMAKE_SOURCE_DIR}/resources/*")
+    set_property(TARGET ${PROJECT_NAME} APPEND PROPERTY LINK_DEPENDS
+        ${RESOURCE_FILES} "${CMAKE_SOURCE_DIR}/web/shell.html")
+
+    # cmake --build <build> --target package_web で itch.io 提出用の zip を作る
+    add_custom_target(package_web
+        COMMAND ${CMAKE_COMMAND} -E tar cf "${CMAKE_BINARY_DIR}/${PROJECT_NAME}-web.zip" --format=zip
+                index.html index.js index.wasm index.data
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/web"
+        DEPENDS ${PROJECT_NAME}
+        COMMENT "Creating ${PROJECT_NAME}-web.zip for itch.io"
+    )
+endif()
