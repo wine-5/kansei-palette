@@ -2,28 +2,39 @@
 <html lang="ja">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>KanseiPalette</title>
+    <!-- スマートフォンで、ダブルタップやピンチで拡大されないようにする -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>かんせいのパレット</title>
     <style>
-        html, body { margin: 0; padding: 0; height: 100%; background: #000; overflow: hidden; }
-        body { display: flex; align-items: center; justify-content: center; }
-        /* canvas の実解像度は InitWindow のサイズ。表示だけ画面に合わせて縮小する */
+        html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #1b1b1f; overflow: hidden; }
+        /* キャンバスの画素数と表示サイズはゲーム側(Main.cpp の syncCanvasSize)で画面いっぱいに合わせる */
         canvas.emscripten {
             display: block; border: 0; outline: none;
-            max-width: 100vw; max-height: 100vh;
-            image-rendering: auto;
+            touch-action: none;       /* タップでスクロール・拡大しない */
+            user-select: none; -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
-        #status {
-            position: absolute; color: #ccc; font: 16px sans-serif;
+        /* 読み込み中の表示(画像・音・フォントの index.data をダウンロードしている間) */
+        #loading {
+            position: absolute; inset: 0; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 14px;
+            color: #ddd; font: 16px sans-serif; background: #1b1b1f;
         }
+        #loading .bar { width: min(320px, 70vw); height: 8px; border-radius: 4px; background: #3a3a40; overflow: hidden; }
+        #loading .fill { width: 0%; height: 100%; background: #e5493f; transition: width 0.2s; }
     </style>
 </head>
 <body>
     <!-- tabindex: キーボード入力を受け取るために canvas がフォーカスを持てるようにする -->
     <canvas class="emscripten" id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
-    <div id="status">Loading...</div>
+    <div id="loading">
+        <div id="status">よみこみ中</div>
+        <div class="bar"><div class="fill" id="fill"></div></div>
+    </div>
     <script>
+        var loadingElement = document.getElementById('loading');
         var statusElement = document.getElementById('status');
+        var fillElement = document.getElementById('fill');
         var canvasElement = document.getElementById('canvas');
         // itch.io の iframe 内ではクリックするまでキー入力が届かないため、クリックでフォーカスする
         canvasElement.addEventListener('mousedown', function () { canvasElement.focus(); });
@@ -33,15 +44,27 @@
             print: function (text) { console.log(text); },
             printErr: function (text) { console.error(text); },
             setStatus: function (text) {
-                // リソース(.data)のダウンロード進捗が渡される。空文字で読み込み完了
-                statusElement.textContent = text;
-                statusElement.style.display = text ? 'block' : 'none';
+                // 読み込みの進み具合が「Downloading data... (受信済み/全体)」の形で渡される。空文字で完了
+                if (!text) {
+                    loadingElement.style.display = 'none';
+                    return;
+                }
+                var match = text.match(/\((\d+(?:\.\d+)?)\/(\d+)\)/);
+                if (match) {
+                    fillElement.style.width = (100 * parseFloat(match[1]) / parseInt(match[2])) + '%';
+                    statusElement.textContent = 'よみこみ中';
+                } else {
+                    statusElement.textContent = text;
+                }
             },
             monitorRunDependencies: function (left) {
                 if (left === 0) Module.setStatus('');
             }
         };
-        window.onerror = function () { Module.setStatus('エラーが発生しました(開発者ツールのコンソールを確認)'); };
+        window.onerror = function () {
+            loadingElement.style.display = 'flex';
+            statusElement.textContent = 'エラーが発生しました(開発者ツールのコンソールを確認)';
+        };
     </script>
     {{{ SCRIPT }}}
 </body>
