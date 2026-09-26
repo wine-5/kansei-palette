@@ -7,6 +7,7 @@ void Application::init()
 	m_restoreShader.load();
 	m_worldRenderer.init(m_assets, m_restoreShader);
 	m_shaderPreview.init();
+	m_effects.init();
 }
 
 void Application::runFrame()
@@ -33,6 +34,7 @@ void Application::runFrame()
 void Application::shutdown()
 {
 	m_audio.unload();
+	m_effects.unload();
 	m_shaderPreview.unload();
 	m_worldRenderer.unload();
 	m_restoreShader.unload();
