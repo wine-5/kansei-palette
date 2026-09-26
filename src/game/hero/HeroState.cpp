@@ -13,9 +13,9 @@ namespace game::hero
 		case HeroPose::Run:
 			// 立ち位置まで走り、着いたら待機に戻す
 			m_x += data::HERO_RUN_SPEED * dt;
-			if (m_x >= data::HERO_PLAY_X)
+			if (m_x >= m_runTargetX)
 			{
-				m_x = data::HERO_PLAY_X;
+				m_x = m_runTargetX;
 				changePose(HeroPose::Idle);
 			}
 			break;
@@ -95,11 +95,12 @@ namespace game::hero
 			changePose(HeroPose::Idle);
 	}
 
-	void HeroState::startRunIn()
+	void HeroState::startRunIn(float x, float z)
 	{
 		m_isFacingLeft = false;
+		m_runTargetX = x;
 		m_x = data::HERO_RUN_START_X;
-		m_z = data::HERO_PLAY_Z;
+		m_z = z;
 		m_canThink = true;
 		m_idleTimer = 0.0f;
 		m_thinkInterval = data::HERO_IDLE_THINK_TIME;
