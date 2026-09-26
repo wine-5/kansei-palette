@@ -120,6 +120,22 @@ namespace game::board
 		return count;
 	}
 
+	bool Board::findSource(Cell& outSource) const
+	{
+		for (int row{}; row < SIZE; ++row)
+		{
+			for (int col{}; col < SIZE; ++col)
+			{
+				if (getTile(row, col).m_type == TileType::Source)
+				{
+					outSource = Cell{ row, col };
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
 	bool Board::findFarthestLitGoal(Cell& outGoal) const
 	{
 		int farthest{ -1 };

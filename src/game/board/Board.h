@@ -64,6 +64,13 @@ namespace game::board
 		bool isCleared() const;
 
 		/**
+		 * @brief 電源のマスを探す
+		 * @param outSource 見つかった電源の位置
+		 * @return 電源があれば true
+		 */
+		bool findSource(Cell& outSource) const;
+
+		/**
 		 * @brief 電源からいちばん遠いゴールを探す
 		 * @param outGoal 見つかったゴールの位置
 		 * @return 電気が届いているゴールがあれば true
