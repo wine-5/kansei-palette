@@ -1,4 +1,5 @@
 #include "Button.h"
+#include "UiScale.h"
 #include "UiStyle.h"
 
 namespace
@@ -30,7 +31,7 @@ namespace infrastructure::ui
 
 	bool Button::isHovered(Rectangle bounds)
 	{
-		return CheckCollisionPointRec(GetMousePosition(), bounds);
+		return CheckCollisionPointRec(uiMousePosition(), bounds);
 	}
 
 	void Button::draw(Rectangle bounds, const char* label, const Font& font, Color accent)

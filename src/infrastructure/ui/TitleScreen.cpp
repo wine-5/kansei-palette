@@ -1,5 +1,6 @@
 #include "TitleScreen.h"
 #include "Button.h"
+#include "UiScale.h"
 #include "UiStyle.h"
 #include "UiText.h"
 #include "infrastructure/resource/Assets.h"
@@ -9,6 +10,9 @@
 
 namespace
 {
+	using infrastructure::ui::logicalHeight;
+	using infrastructure::ui::logicalWidth;
+
 	// タイトルの文字の大きさ(画面幅の 7.2%、34〜84px)
 	constexpr float TITLE_SIZE_RATIO{ 0.072f };
 	constexpr float TITLE_SIZE_MIN{ 34.0f };
@@ -33,7 +37,7 @@ namespace
 
 	Rectangle buttonBounds()
 	{
-		return Rectangle{ (GetScreenWidth() - BUTTON_WIDTH) / 2.0f, GetScreenHeight() - BUTTON_BOTTOM_MARGIN - BUTTON_HEIGHT, BUTTON_WIDTH, BUTTON_HEIGHT };
+		return Rectangle{ (logicalWidth() - BUTTON_WIDTH) / 2.0f, logicalHeight() - BUTTON_BOTTOM_MARGIN - BUTTON_HEIGHT, BUTTON_WIDTH, BUTTON_HEIGHT };
 	}
 
 	Color lerpColor(Color from, Color to, float t)
@@ -57,11 +61,11 @@ namespace infrastructure::ui
 	void TitleScreen::draw(const game::flow::GameFlow& flow, const resource::Assets& assets) const
 	{
 		const bool isEnding{ flow.getPhase() == game::flow::GamePhase::Ending };
-		const float centerX{ GetScreenWidth() / 2.0f };
+		const float centerX{ logicalWidth() / 2.0f };
 
 		// タイトル: 1 文字ずつ描く(エンディングでは左から順に色づく)
 		const Font& titleFont{ assets.getTitleFont() };
-		const float titleSize{ std::clamp(GetScreenWidth() * TITLE_SIZE_RATIO, TITLE_SIZE_MIN, TITLE_SIZE_MAX) };
+		const float titleSize{ std::clamp(logicalWidth() * TITLE_SIZE_RATIO, TITLE_SIZE_MIN, TITLE_SIZE_MAX) };
 		const Vector2 titleWidth{ measureText(titleFont, TEXT_TITLE, titleSize) };
 		float x{ centerX - titleWidth.x / 2.0f };
 		int codepointCount{};
