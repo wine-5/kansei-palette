@@ -36,6 +36,17 @@ namespace
 	constexpr const char* TILE_FILES[]{ "straight", "corner", "tee", "cross", "source", "goal", "locked", "blank" };
 	// game::data::PropType の順
 	constexpr const char* PROP_FILES[]{ "cottage", "flowers", "fence", "fountain", "lamp", "balloon", "tree", "pine" };
+	/// ポーズごとに使う主人公のコマ(resources/images/hero/hero_NN.png の番号。game::hero::HeroPose の順)
+	const std::vector<int> HERO_FRAMES[]{
+		{ 0, 1, 2, 3 },       // 待機
+		{ 4, 5, 6, 7, 8, 9 }, // 走り(右向き)
+		{ 30 },               // 汗
+		{ 17 },               // 考え込む
+		{ 29 },               // 目が回る
+		{ 12, 13 },           // 喜び(バンザイ)
+		{ 10 },               // 星を伴う喜び
+	};
+
 	// infrastructure::resource::BackgroundLayer の順
 	constexpr const char* BACKGROUND_FILES[]{ "sky", "mountains", "village", "foreground" };
 
@@ -108,7 +119,17 @@ namespace infrastructure::resource
 		for (size_t i{}; i < m_props.size(); ++i)
 			m_props[i] = loadSmoothTexture(std::string(IMAGE_DIR) + "props/" + PROP_FILES[i] + ".png", isOk);
 
-		// TODO: 主人公のコマとパレットを読み込む
+		for (size_t pose{}; pose < m_heroFrames.size(); ++pose)
+		{
+			for (int number : HERO_FRAMES[pose])
+			{
+				char fileName[32]{};
+				std::snprintf(fileName, sizeof(fileName), "hero/hero_%02d.png", number);
+				m_heroFrames[pose].push_back(loadSmoothTexture(std::string(IMAGE_DIR) + fileName, isOk));
+			}
+		}
+
+		// TODO: パレットを読み込む
 		return isOk;
 	}
 
@@ -122,6 +143,12 @@ namespace infrastructure::resource
 			UnloadTexture(texture);
 		for (Texture2D& texture : m_backgrounds)
 			UnloadTexture(texture);
+		for (auto& frames : m_heroFrames)
+		{
+			for (Texture2D& texture : frames)
+				UnloadTexture(texture);
+			frames.clear();
+		}
 		m_tiles = {};
 		m_props = {};
 		m_backgrounds = {};

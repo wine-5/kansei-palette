@@ -109,6 +109,25 @@ namespace
 		return row * game::board::Board::SIZE + col;
 	}
 
+	/// 立っている地面の高さ(台座の上か、その外の芝生か)
+	float groundHeightAt(float x, float z)
+	{
+		const float half{ PEDESTAL_SIZE / 2.0f };
+		return (std::fabs(x) <= half && std::fabs(z) <= half) ? 0.0f : -PEDESTAL_HEIGHT;
+	}
+
+	/// 主人公のポーズごとのコマ送りの速さ(毎秒のコマ数)
+	float heroFps(game::hero::HeroPose pose)
+	{
+		switch (pose)
+		{
+		case game::hero::HeroPose::Idle: return 4.0f;
+		case game::hero::HeroPose::Run: return 12.0f;
+		case game::hero::HeroPose::Cheer: return 6.0f;
+		default: return 1.0f;
+		}
+	}
+
 	/// マスごとに決まった見た目違いの番号(同じ種類のタイルが並んでも単調に見えないようにする)
 	int tileVariant(int stageIndex, int row, int col)
 	{
@@ -416,54 +435,70 @@ namespace infrastructure::render
 
 	void WorldRenderer::drawProps(const game::flow::GameFlow& flow) const
 	{
-		(void)flow; // せり上がりの状態は update() で m_propRise に反映済み
-		struct PropDraw
+		/**
+		 * @brief 立ち絵 1 枚分(小物・主人公)
+		 */
+		struct Standee
 		{
-			const game::data::PropPlacement* m_placement{};
-			float m_y{};
-			float m_rise{}; // せり上がりの度合い(高さに掛ける)
+			const Texture2D* m_texture{};
+			Vector3 m_foot{};   // 足元の位置
+			float m_height{};   // 表示する高さ(ワールド単位)
+			bool m_isFlipped{}; // 左右反転するか
 		};
-		std::vector<PropDraw> draws;
+		std::vector<Standee> standees;
+
 		for (size_t stage{}; stage < game::data::STAGES.size(); ++stage)
 		{
 			const game::data::StageDefinition& definition{ game::data::STAGES[stage] };
 			for (int i{}; i < definition.m_propCount; ++i)
 			{
+				// せり上がりの状態は update() で m_propRise に反映済み
 				const float rise{ m_isShowingAllProps ? 1.0f : m_propRise[stage][i].m_value };
 				if (rise < 0.01f)
 					continue;
 				const game::data::PropPlacement& placement{ definition.m_props[i] };
-				float y{ -PEDESTAL_HEIGHT };
+				float y{ groundHeightAt(placement.m_x, placement.m_z) };
 				if (placement.m_type == game::data::PropType::Balloon)
 					y += BALLOON_FLOAT + std::sin(m_time * 1.3f) * BALLOON_BOB;
-				draws.push_back(PropDraw{ &placement, y, rise });
+				standees.push_back(Standee{ &m_assets->getPropTexture(placement.m_type), Vector3{ placement.m_x, y, placement.m_z },
+					placement.m_height * rise, placement.m_isFlipped });
 			}
 		}
 
+		// 主人公: ポーズごとのコマを時間で切り替える。全ポーズを待機の 1 コマ目と同じ倍率で表示する
+		const game::hero::HeroState& hero{ flow.getHero() };
+		const int frameCount{ m_assets->getHeroFrameCount(hero.getPose()) };
+		const Texture2D& reference{ m_assets->getHeroFrame(game::hero::HeroPose::Idle, 0) };
+		if (frameCount > 0 && reference.height > 0)
+		{
+			const int frame{ static_cast<int>(hero.getPoseTime() * heroFps(hero.getPose())) % frameCount };
+			const Texture2D& texture{ m_assets->getHeroFrame(hero.getPose(), frame) };
+			const float worldPerPixel{ game::data::HERO_IDLE_HEIGHT / reference.height };
+			standees.push_back(Standee{ &texture, Vector3{ hero.getX(), groundHeightAt(hero.getX(), hero.getZ()), hero.getZ() },
+				texture.height * worldPerPixel, false });
+		}
+
 		// 半透明の縁が正しく重なるよう、奥(Z が小さい)から描く
-		std::sort(draws.begin(), draws.end(), [](const PropDraw& a, const PropDraw& b) { return a.m_placement->m_z < b.m_placement->m_z; });
+		std::sort(standees.begin(), standees.end(), [](const Standee& a, const Standee& b) { return a.m_foot.z < b.m_foot.z; });
 
 		const float tilt{ BILLBOARD_TILT_DEG * DEG2RAD };
 		const Vector3 up{ 0.0f, std::cos(tilt), -std::sin(tilt) };
-		for (const PropDraw& draw : draws)
+		for (const Standee& standee : standees)
 		{
-			const game::data::PropPlacement& placement{ *draw.m_placement };
-			const Texture2D& texture{ m_assets->getPropTexture(placement.m_type) };
-			if (texture.id == 0)
+			const Texture2D& texture{ *standee.m_texture };
+			if (texture.id == 0 || standee.m_height <= 0.0f)
 				continue;
 
-			const float height{ placement.m_height * draw.m_rise };
-			const float width{ height * texture.width / static_cast<float>(texture.height) };
+			const float width{ standee.m_height * texture.width / static_cast<float>(texture.height) };
 			Rectangle source{ 0.0f, 0.0f, static_cast<float>(texture.width), static_cast<float>(texture.height) };
-			if (placement.m_isFlipped)
+			if (standee.m_isFlipped)
 			{
 				// 左右反転: 右端から左へ読む(幅だけ負にすると画像の外を読んでしまう)
 				source.x = source.width;
 				source.width = -source.width;
 			}
 			// 足元(画像の下辺中央)を配置位置に合わせる
-			DrawBillboardPro(m_camera, texture, source, Vector3{ placement.m_x, draw.m_y, placement.m_z }, up, Vector2{ width, height },
-				Vector2{ width / 2.0f, 0.0f }, 0.0f, WHITE);
+			DrawBillboardPro(m_camera, texture, source, standee.m_foot, up, Vector2{ width, standee.m_height }, Vector2{ width / 2.0f, 0.0f }, 0.0f, WHITE);
 		}
 	}
 } // namespace infrastructure::render

@@ -83,6 +83,14 @@ namespace
 		return std::any_of(events.begin(), events.end(), [type](const game::event::GameEvent& e) { return e.m_type == type; });
 	}
 
+	/// 指定した秒数だけ、何も操作せずに進める
+	void advance(game::flow::GameFlow& flow, float seconds)
+	{
+		constexpr float DT{ 1.0f / 60.0f };
+		for (float t{}; t < seconds; t += DT)
+			flow.update(DT, game::flow::GameInput{});
+	}
+
 	void testFlowStage1()
 	{
 		std::printf("--- flow: stage 1 ---\n");
@@ -99,6 +107,11 @@ namespace
 		for (int i{}; i < 600 && flow.getPhase() != game::flow::GamePhase::Playing; ++i)
 			flow.update(DT, game::flow::GameInput{});
 		check(flow.getPhase() == game::flow::GamePhase::Playing, "入場が終わると遊べる状態になる");
+		check(flow.getHero().getPose() == game::hero::HeroPose::Idle, "入場が終わると主人公は待機のポーズになる");
+
+		// 操作しないでいると考え込む
+		advance(flow, game::data::HERO_IDLE_THINK_TIME + 0.1f);
+		check(flow.getHero().getPose() == game::hero::HeroPose::Think, "しばらく操作しないと主人公が考え込む");
 
 		// 回せないタイル(電源)をタップしても盤面は変わらない
 		game::flow::GameInput tapSource{};
@@ -131,14 +144,6 @@ namespace
 		check(flow.getBoard().getTile(0, 0).m_rotation == before, "クリア演出中はタイルが回らない");
 	}
 
-	/// 指定した秒数だけ、何も操作せずに進める
-	void advance(game::flow::GameFlow& flow, float seconds)
-	{
-		constexpr float DT{ 1.0f / 60.0f };
-		for (float t{}; t < seconds; t += DT)
-			flow.update(DT, game::flow::GameInput{});
-	}
-
 	/// 解答どおりにタップしてステージをクリアする
 	void solveCurrentStage(game::flow::GameFlow& flow)
 	{
@@ -164,7 +169,9 @@ namespace
 
 		for (int stage{}; stage < static_cast<int>(game::data::STAGES.size()); ++stage)
 		{
-			advance(flow, 0.1f);
+			// 主人公が走って入ってくるのを待つ
+			for (int i{}; i < 600 && flow.getPhase() != game::flow::GamePhase::Playing; ++i)
+				flow.update(1.0f / 60.0f, game::flow::GameInput{});
 			check(flow.getStageIndex() == stage && flow.getPhase() == game::flow::GamePhase::Playing, "ステージが始まって遊べる状態になる");
 			solveCurrentStage(flow);
 			check(flow.getPhase() == game::flow::GamePhase::Clearing, "解答どおりに回すとクリア演出に進む");
