@@ -1,13 +1,18 @@
 #include "Hud.h"
 #include "Button.h"
+#include "UiScale.h"
 #include "UiStyle.h"
 #include "UiText.h"
 #include "game/data/Stages.h"
 #include "infrastructure/resource/Assets.h"
+#include <algorithm>
 #include <cstdio>
 
 namespace
 {
+	using infrastructure::ui::logicalHeight;
+	using infrastructure::ui::logicalWidth;
+
 	constexpr float MARGIN{ 16.0f };
 
 	// 左上: ステージ番号・名前・取り戻した色の丸
@@ -25,14 +30,16 @@ namespace
 	constexpr float BUTTON_GAP{ 12.0f };
 
 	// 下: ヒント文とゴールの点灯数
-	constexpr float BOTTOM_PANEL_WIDTH{ 900.0f };
+	constexpr float BOTTOM_PANEL_WIDTH{ 900.0f }; // 画面が狭いときは画面幅に合わせて縮める
 	constexpr float BOTTOM_PANEL_HEIGHT{ 58.0f };
+	constexpr float BOTTOM_PANEL_HEIGHT_NARROW{ 96.0f }; // 狭い画面ではヒントとゴールを 2 行に分ける
+	constexpr float NARROW_WIDTH{ 1000.0f };
 	constexpr float HINT_SIZE{ 22.0f };
 	constexpr float GOAL_SIZE{ 26.0f };
 
 	Rectangle soundButtonBounds()
 	{
-		return Rectangle{ GetScreenWidth() - MARGIN - SOUND_BUTTON_WIDTH, MARGIN, SOUND_BUTTON_WIDTH, BUTTON_HEIGHT };
+		return Rectangle{ logicalWidth() - MARGIN - SOUND_BUTTON_WIDTH, MARGIN, SOUND_BUTTON_WIDTH, BUTTON_HEIGHT };
 	}
 
 	Rectangle resetButtonBounds()
@@ -92,15 +99,26 @@ namespace infrastructure::ui
 		// 下: ヒント文と「ゴール 点灯数 / 全体」(クリアカードを出している間は隠す)
 		if (flow.getPhase() == game::flow::GamePhase::ClearCard)
 			return;
-		const Rectangle bottom{ (GetScreenWidth() - BOTTOM_PANEL_WIDTH) / 2.0f, GetScreenHeight() - MARGIN - BOTTOM_PANEL_HEIGHT, BOTTOM_PANEL_WIDTH, BOTTOM_PANEL_HEIGHT };
+		const bool isNarrow{ logicalWidth() < NARROW_WIDTH };
+		const float panelWidth{ std::min(BOTTOM_PANEL_WIDTH, logicalWidth() - MARGIN * 2.0f) };
+		const float panelHeight{ isNarrow ? BOTTOM_PANEL_HEIGHT_NARROW : BOTTOM_PANEL_HEIGHT };
+		const Rectangle bottom{ (logicalWidth() - panelWidth) / 2.0f, logicalHeight() - MARGIN - panelHeight, panelWidth, panelHeight };
 		drawPanel(bottom);
-		const float textY{ bottom.y + (bottom.height - HINT_SIZE) / 2.0f };
-		drawText(font, stage.m_hint, Vector2{ bottom.x + 24.0f, textY }, HINT_SIZE, TEXT_COLOR);
 
 		const game::board::Board& board{ flow.getBoard() };
 		char goalLabel[64]{};
 		std::snprintf(goalLabel, sizeof(goalLabel), "%s %d / %d", TEXT_GOAL, board.countLitGoals(), board.countGoals());
 		const Vector2 goalSize{ measureText(font, goalLabel, GOAL_SIZE) };
-		drawText(font, goalLabel, Vector2{ bottom.x + bottom.width - 24.0f - goalSize.x, bottom.y + (bottom.height - GOAL_SIZE) / 2.0f }, GOAL_SIZE, TEXT_COLOR);
+		if (isNarrow)
+		{
+			// 1 行目にヒント、2 行目の右にゴールの点灯数
+			drawText(font, stage.m_hint, Vector2{ bottom.x + 20.0f, bottom.y + 14.0f }, HINT_SIZE, TEXT_COLOR);
+			drawText(font, goalLabel, Vector2{ bottom.x + bottom.width - 20.0f - goalSize.x, bottom.y + bottom.height - 14.0f - GOAL_SIZE }, GOAL_SIZE, TEXT_COLOR);
+		}
+		else
+		{
+			drawText(font, stage.m_hint, Vector2{ bottom.x + 24.0f, bottom.y + (bottom.height - HINT_SIZE) / 2.0f }, HINT_SIZE, TEXT_COLOR);
+			drawText(font, goalLabel, Vector2{ bottom.x + bottom.width - 24.0f - goalSize.x, bottom.y + (bottom.height - GOAL_SIZE) / 2.0f }, GOAL_SIZE, TEXT_COLOR);
+		}
 	}
 } // namespace infrastructure::ui

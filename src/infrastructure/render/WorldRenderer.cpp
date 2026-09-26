@@ -45,6 +45,10 @@ namespace
 	constexpr float VILLAGE_BOTTOM{ 0.82f };
 	constexpr float VILLAGE_SCALE{ 1.45f };
 	constexpr float BG_WIDTH_SCALE{ 1.15f }; // 視差でずらしても端が見えないよう、画面より少し広く描く
+	// 縦長の画面での帯の最低の高さ(画面の高さに対する割合)
+	constexpr float SKY_MIN_HEIGHT{ 0.40f };
+	constexpr float MOUNTAINS_MIN_HEIGHT{ 0.10f };
+	constexpr float VILLAGE_MIN_HEIGHT{ 0.26f };
 	constexpr float MOUNTAINS_PARALLAX{ 30.0f };
 	constexpr float VILLAGE_PARALLAX{ 60.0f };
 	constexpr float FOREGROUND_PARALLAX{ 90.0f };
@@ -59,13 +63,15 @@ namespace
 	 * @param bottom 帯の下端の画面 y 座標
 	 * @param widthScale 画面幅に対する帯の幅の倍率
 	 * @param offsetX 横のずれ(視差)
+	 * @param minHeight 帯の最低の高さ(縦長の画面では幅に合わせると低くなりすぎるので、左右をはみ出させて高さを保つ)
 	 */
-	void drawBand(const Texture2D& texture, float bottom, float widthScale, float offsetX)
+	void drawBand(const Texture2D& texture, float bottom, float widthScale, float offsetX, float minHeight = 0.0f)
 	{
 		if (texture.id == 0)
 			return;
-		const float width{ GetScreenWidth() * widthScale };
-		const float height{ width * texture.height / static_cast<float>(texture.width) };
+		const float aspect{ texture.width / static_cast<float>(texture.height) };
+		const float height{ std::max(GetScreenWidth() * widthScale / aspect, minHeight) };
+		const float width{ height * aspect };
 		const Rectangle source{ 0.0f, 0.0f, static_cast<float>(texture.width), static_cast<float>(texture.height) };
 		const Rectangle dest{ (GetScreenWidth() - width) / 2.0f + offsetX, bottom - height, width, height };
 		DrawTexturePro(texture, source, dest, Vector2{}, 0.0f, WHITE);
@@ -361,9 +367,11 @@ namespace infrastructure::render
 
 		// 空: 画面全体をグラデーションで塗り、その上に空の画像を描く
 		DrawRectangleGradientV(0, 0, GetScreenWidth(), GetScreenHeight(), SKY_TOP_COLOR, SKY_BOTTOM_COLOR);
-		drawBand(m_assets->getBackground(resource::BackgroundLayer::Sky), screenHeight * SKY_BOTTOM, SKY_SCALE, 0.0f);
-		drawBand(m_assets->getBackground(resource::BackgroundLayer::Mountains), screenHeight * MOUNTAINS_BOTTOM, MOUNTAINS_SCALE, shift * MOUNTAINS_PARALLAX);
-		drawBand(m_assets->getBackground(resource::BackgroundLayer::Village), screenHeight * VILLAGE_BOTTOM, VILLAGE_SCALE, shift * VILLAGE_PARALLAX);
+		drawBand(m_assets->getBackground(resource::BackgroundLayer::Sky), screenHeight * SKY_BOTTOM, SKY_SCALE, 0.0f, screenHeight * SKY_MIN_HEIGHT);
+		drawBand(m_assets->getBackground(resource::BackgroundLayer::Mountains), screenHeight * MOUNTAINS_BOTTOM, MOUNTAINS_SCALE, shift * MOUNTAINS_PARALLAX,
+			screenHeight * MOUNTAINS_MIN_HEIGHT);
+		drawBand(m_assets->getBackground(resource::BackgroundLayer::Village), screenHeight * VILLAGE_BOTTOM, VILLAGE_SCALE, shift * VILLAGE_PARALLAX,
+			screenHeight * VILLAGE_MIN_HEIGHT);
 	}
 
 	void WorldRenderer::drawForeground() const

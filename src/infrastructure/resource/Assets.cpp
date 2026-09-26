@@ -21,8 +21,10 @@ namespace
 	int scaledFontSize(int size)
 	{
 #if defined(PLATFORM_WEB)
-		// Web 版は高 DPI 表示に未対応(キャンバスは 1280×720 のまま)なので、倍率を掛けない
-		return size;
+		// Web 版はキャンバスを画面の実際の画素数で描き、UI を拡大して表示する(Main.cpp)。
+		// 拡大してもぼやけないよう、常に 2 倍で焼き込む
+		constexpr int WEB_FONT_SCALE{ 2 };
+		return size * WEB_FONT_SCALE;
 #else
 		const Vector2 scale{ GetWindowScaleDPI() };
 		return static_cast<int>(size * std::max(1.0f, scale.x));

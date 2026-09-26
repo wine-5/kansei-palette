@@ -14,7 +14,7 @@ namespace game::data
 	constexpr float CAMERA_TARGET_X{ 0.0f };   // 注視点
 	constexpr float CAMERA_TARGET_Y{ 0.5f };
 	constexpr float CAMERA_TARGET_Z{ -0.2f };
-	constexpr float VIEW_WIDTH_MIN{ 6.9f };    // 見せる横幅(ワールド単位)の下限・上限
+	constexpr float VIEW_WIDTH_MIN{ 8.4f };    // 見せる横幅(ワールド単位)の下限・上限。縦長の画面でも盤面の左の主人公まで入る幅
 	constexpr float VIEW_WIDTH_MAX{ 9.6f };
 	constexpr float VIEW_HEIGHT{ 8.6f };       // 見せる縦幅
 	constexpr float PARALLAX_X{ 0.55f };       // ポインター位置による視差の最大量

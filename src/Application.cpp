@@ -1,5 +1,6 @@
 #include "Application.h"
 #include "raylib.h"
+#include "infrastructure/ui/UiScale.h"
 
 void Application::init()
 {
@@ -69,6 +70,8 @@ void Application::draw()
 	m_worldRenderer.drawForegroundLayer(m_restoreShader); // 演出(輪や星くず)より手前に重ねる
 	m_effects.drawScreen();
 
+	// UI は 1280×720 を基準に作り、画面の大きさに合わせて拡大縮小して描く
+	BeginMode2D(infrastructure::ui::uiCamera());
 	switch (m_flow.getPhase())
 	{
 	case game::flow::GamePhase::Title:
@@ -84,6 +87,7 @@ void Application::draw()
 
 	m_shaderPreview.draw(m_restoreShader);
 	if (m_shaderPreview.isVisible())
-		DrawFPS(GetScreenWidth() - 100, GetScreenHeight() - 30); // 確認画面(F1)を開いているときだけ出す
+		DrawFPS(static_cast<int>(infrastructure::ui::logicalWidth()) - 100, static_cast<int>(infrastructure::ui::logicalHeight()) - 30); // 確認画面(F1)を開いているときだけ出す
+	EndMode2D();
 	EndDrawing();
 }

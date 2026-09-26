@@ -1,5 +1,6 @@
 #include "ClearCard.h"
 #include "Button.h"
+#include "UiScale.h"
 #include "UiStyle.h"
 #include "UiText.h"
 #include "game/data/Stages.h"
@@ -9,6 +10,9 @@
 
 namespace
 {
+	using infrastructure::ui::logicalHeight;
+	using infrastructure::ui::logicalWidth;
+
 	constexpr float CARD_WIDTH{ 560.0f };
 	constexpr float CARD_HEIGHT{ 200.0f };
 	constexpr float CARD_BOTTOM_MARGIN{ 24.0f };
@@ -20,7 +24,7 @@ namespace
 
 	Rectangle cardBounds()
 	{
-		return Rectangle{ (GetScreenWidth() - CARD_WIDTH) / 2.0f, GetScreenHeight() - CARD_BOTTOM_MARGIN - CARD_HEIGHT, CARD_WIDTH, CARD_HEIGHT };
+		return Rectangle{ (logicalWidth() - CARD_WIDTH) / 2.0f, logicalHeight() - CARD_BOTTOM_MARGIN - CARD_HEIGHT, CARD_WIDTH, CARD_HEIGHT };
 	}
 
 	Rectangle nextButtonBounds()
