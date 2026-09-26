@@ -47,6 +47,7 @@ namespace
 		{ 29 },               // 目が回る
 		{ 12, 13 },           // 喜び(バンザイ)
 		{ 10 },               // 星を伴う喜び
+		{ 4, 5, 6, 7, 8, 9 }, // 歩く(走りのコマをゆっくり送る)
 	};
 
 	// infrastructure::resource::BackgroundLayer の順

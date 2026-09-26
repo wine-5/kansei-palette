@@ -91,7 +91,7 @@ namespace infrastructure::resource
 		std::array<std::array<std::array<Texture2D, TILE_VARIANT_COUNT>, 8>, game::data::STAGES.size()> m_tiles{};
 		std::array<Texture2D, 4> m_backgrounds{}; // BackgroundLayer の順
 		std::array<Texture2D, 8> m_props{};  // game::data::PropType の順
-		std::array<std::vector<Texture2D>, 7> m_heroFrames{}; // game::hero::HeroPose の順
+		std::array<std::vector<Texture2D>, 8> m_heroFrames{}; // game::hero::HeroPose の順
 		Texture2D m_palette{};
 		Font m_uiFont{};
 		Font m_titleFont{};
