@@ -48,9 +48,14 @@ namespace game::hero
 		float getZ() const { return m_z; }
 
 	private:
+		/// ポーズを切り替える(経過時間を 0 に戻す)
+		void changePose(HeroPose pose);
+
 		HeroPose m_pose = HeroPose::Idle;
 		float m_poseTime{};  // 現在のポーズの経過秒数
 		float m_idleTimer{}; // 操作がない時間(考え込むまでのタイマー)
+		float m_thinkInterval{ 14.0f }; // 次に考え込むまでの秒数(1 回目は長く、2 回目以降は短い)
+		bool m_canThink{};   // 考え込んでよいか(ステージ中だけ)
 		float m_x{};
 		float m_z{};
 	};

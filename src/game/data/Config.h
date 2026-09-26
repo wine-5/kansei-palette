@@ -56,7 +56,9 @@ namespace game::data
 	constexpr float HERO_PLAY_X{ -3.7f };            // プレイ中の立ち位置
 	constexpr float HERO_PLAY_Z{ 2.2f };
 	constexpr float HERO_RUN_START_X{ -9.0f };       // 入場の走り始め
-	constexpr float HERO_PIXEL_TO_WORLD{ 0.0078f };  // 画像 1px あたりのワールド単位
+	constexpr float HERO_TITLE_X{ -3.9f };           // タイトル・エンディングでの立ち位置(盤面の左)
+	constexpr float HERO_TITLE_Z{ 1.4f };
+	constexpr float HERO_IDLE_HEIGHT{ 1.34f };       // 待機ポーズの高さ(ワールド単位)。全ポーズを同じ倍率で表示する
 
 	// --- 星くず ---
 	constexpr int PARTICLE_MAX{ 700 }; // Web で重ければ 400 に減らす
