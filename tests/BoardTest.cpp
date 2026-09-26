@@ -120,7 +120,6 @@ namespace
 		flow.update(DT, tapSource);
 		check(hasEvent(flow, game::event::GameEventType::TileBlocked), "電源をタップすると TileBlocked が記録される");
 
-		bool isCleared{};
 		for (const auto& step : SOLUTIONS[0])
 		{
 			for (int i{}; i < 4 && flow.getBoard().getTile(step.m_row, step.m_col).m_rotation != step.m_rotation; ++i)
@@ -129,11 +128,30 @@ namespace
 				tap.m_tappedRow = step.m_row;
 				tap.m_tappedCol = step.m_col;
 				flow.update(DT, tap);
-				isCleared = isCleared || hasEvent(flow, game::event::GameEventType::StageCleared);
 			}
 		}
-		check(isCleared, "解答どおりにタップすると StageCleared が記録される");
-		check(flow.getPhase() == game::flow::GamePhase::Clearing, "クリア演出に進む");
+		check(flow.getPhase() == game::flow::GamePhase::Walking, "道がつながると主人公がゴールへ歩き出す");
+		check(flow.getHero().getPose() == game::hero::HeroPose::Walk, "主人公は歩くポーズになる");
+
+		// 歩いている間もタップしても回らない
+		{
+			const int before{ flow.getBoard().getTile(0, 0).m_rotation };
+			game::flow::GameInput tap{};
+			tap.m_tappedRow = 0;
+			tap.m_tappedCol = 0;
+			flow.update(DT, tap);
+			check(flow.getBoard().getTile(0, 0).m_rotation == before, "歩いている間はタイルが回らない");
+		}
+
+		// ゴールに着いたらクリア
+		bool isCleared{};
+		for (int i{}; i < 1200 && flow.getPhase() == game::flow::GamePhase::Walking; ++i)
+		{
+			flow.update(DT, game::flow::GameInput{});
+			isCleared = isCleared || hasEvent(flow, game::event::GameEventType::StageCleared);
+		}
+		check(isCleared && flow.getPhase() == game::flow::GamePhase::Clearing, "ゴールに着くと StageCleared が記録されクリア演出に進む");
+		check(flow.getHero().getX() == game::board::cellCenterX(4) && flow.getHero().getZ() == game::board::cellCenterZ(0), "主人公はゴールのマスに立っている");
 
 		// クリア演出中はタップしても回らない
 		const int before{ flow.getBoard().getTile(0, 0).m_rotation };
@@ -174,7 +192,10 @@ namespace
 				flow.update(1.0f / 60.0f, game::flow::GameInput{});
 			check(flow.getStageIndex() == stage && flow.getPhase() == game::flow::GamePhase::Playing, "ステージが始まって遊べる状態になる");
 			solveCurrentStage(flow);
-			check(flow.getPhase() == game::flow::GamePhase::Clearing, "解答どおりに回すとクリア演出に進む");
+			check(flow.getPhase() == game::flow::GamePhase::Walking, "解答どおりに回すと主人公がゴールへ歩き出す");
+			for (int i{}; i < 1200 && flow.getPhase() == game::flow::GamePhase::Walking; ++i)
+				flow.update(1.0f / 60.0f, game::flow::GameInput{});
+			check(flow.getPhase() == game::flow::GamePhase::Clearing, "ゴールに着くとクリア演出に進む");
 
 			advance(flow, game::data::CLEAR_CARD_TIME + 0.1f);
 			check(flow.getRaisedPropCount(stage) == game::data::STAGES[stage].m_propCount, "クリア演出で、そのステージの小物がすべてせり上がる");
