@@ -1,8 +1,18 @@
 #pragma once
 #include "HeroPose.h"
+#include <vector>
 
 namespace game::hero
 {
+	/**
+	 * @brief 歩く道筋の 1 点(ワールド座標)
+	 */
+	struct Waypoint
+	{
+		float m_x{};
+		float m_z{};
+	};
+
 	/**
 	 * @brief 主人公の状態(ポーズ・位置・タイマー)
 	 * @details どのポーズを出すかだけを決める。どの画像を何 fps で出すかは infrastructure::render が決める。
@@ -29,6 +39,18 @@ namespace game::hero
 		/// やりなおした: 目が回る
 		void onReset();
 
+		/**
+		 * @brief 道筋に沿って歩き始める(着いたら待機のポーズになる)
+		 * @param path 通る点の並び(最後がゴール)
+		 */
+		void startWalk(const std::vector<Waypoint>& path);
+
+		/// 歩いている途中か
+		bool isWalking() const { return m_pose == HeroPose::Walk; }
+
+		/// 左を向いているか(画像は右向きなので、左へ歩くときは左右反転して描く)
+		bool isFacingLeft() const { return m_isFacingLeft; }
+
 		/// ステージをクリアした: 喜ぶ
 		void onStageCleared();
 
@@ -51,11 +73,17 @@ namespace game::hero
 		/// ポーズを切り替える(経過時間を 0 に戻す)
 		void changePose(HeroPose pose);
 
+		/// 道筋に沿って進める
+		void updateWalk(float dt);
+
 		HeroPose m_pose = HeroPose::Idle;
 		float m_poseTime{};  // 現在のポーズの経過秒数
 		float m_idleTimer{}; // 操作がない時間(考え込むまでのタイマー)
 		float m_thinkInterval{ 14.0f }; // 次に考え込むまでの秒数(1 回目は長く、2 回目以降は短い)
 		bool m_canThink{};   // 考え込んでよいか(ステージ中だけ)
+		bool m_isFacingLeft{};
+		std::vector<Waypoint> m_path; // 歩く道筋
+		size_t m_pathIndex{};         // 次に向かう点
 		float m_x{};
 		float m_z{};
 	};

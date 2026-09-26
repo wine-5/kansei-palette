@@ -1,5 +1,6 @@
 #include "HeroState.h"
 #include "game/data/Config.h"
+#include <cmath>
 
 namespace game::hero
 {
@@ -17,6 +18,9 @@ namespace game::hero
 				m_x = data::HERO_PLAY_X;
 				changePose(HeroPose::Idle);
 			}
+			break;
+		case HeroPose::Walk:
+			updateWalk(dt);
 			break;
 		case HeroPose::Sweat:
 			if (m_poseTime >= data::HERO_SWEAT_DURATION)
@@ -54,8 +58,46 @@ namespace game::hero
 		}
 	}
 
+	void HeroState::startWalk(const std::vector<Waypoint>& path)
+	{
+		m_path = path;
+		m_pathIndex = 0;
+		changePose(path.empty() ? HeroPose::Idle : HeroPose::Walk);
+	}
+
+	void HeroState::updateWalk(float dt)
+	{
+		// 次の点へまっすぐ進み、着いたらその次へ。余った移動量は次の区間に持ち越す
+		float remaining{ data::HERO_WALK_SPEED * dt };
+		while (remaining > 0.0f && m_pathIndex < m_path.size())
+		{
+			const Waypoint& target{ m_path[m_pathIndex] };
+			const float dx{ target.m_x - m_x };
+			const float dz{ target.m_z - m_z };
+			const float distance{ std::sqrt(dx * dx + dz * dz) };
+			if (std::fabs(dx) > 0.01f)
+				m_isFacingLeft = dx < 0.0f;
+			if (distance <= remaining)
+			{
+				m_x = target.m_x;
+				m_z = target.m_z;
+				remaining -= distance;
+				++m_pathIndex;
+			}
+			else
+			{
+				m_x += dx / distance * remaining;
+				m_z += dz / distance * remaining;
+				remaining = 0.0f;
+			}
+		}
+		if (m_pathIndex >= m_path.size())
+			changePose(HeroPose::Idle);
+	}
+
 	void HeroState::startRunIn()
 	{
+		m_isFacingLeft = false;
 		m_x = data::HERO_RUN_START_X;
 		m_z = data::HERO_PLAY_Z;
 		m_canThink = true;
@@ -66,6 +108,7 @@ namespace game::hero
 
 	void HeroState::placeAtTitle()
 	{
+		m_isFacingLeft = false;
 		m_x = data::HERO_TITLE_X;
 		m_z = data::HERO_TITLE_Z;
 		m_canThink = false; // タイトルでは考え込まない

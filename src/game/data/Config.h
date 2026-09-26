@@ -53,6 +53,7 @@ namespace game::data
 	constexpr float HERO_SWEAT_DURATION{ 1.1f };
 	constexpr float HERO_DIZZY_DURATION{ 0.9f };
 	constexpr float HERO_RUN_SPEED{ 5.4f };          // 入場時の移動速度(毎秒)
+	constexpr float HERO_WALK_SPEED{ 2.6f };         // つながった道を歩く速さ(毎秒)
 	constexpr float HERO_PLAY_X{ -3.7f };            // プレイ中の立ち位置
 	constexpr float HERO_PLAY_Z{ 2.2f };
 	constexpr float HERO_RUN_START_X{ -9.0f };       // 入場の走り始め
