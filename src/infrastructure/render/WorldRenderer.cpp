@@ -270,7 +270,10 @@ namespace infrastructure::render
 		shader.end();
 
 		EndMode3D();
+	}
 
+	void WorldRenderer::drawForegroundLayer(const RestoreShader& shader) const
+	{
 		shader.begin();
 		drawForeground();
 		shader.end();

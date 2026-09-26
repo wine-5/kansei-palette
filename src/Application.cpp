@@ -66,6 +66,7 @@ void Application::draw()
 	BeginMode3D(m_worldRenderer.getCamera());
 	m_effects.drawWorld(m_worldRenderer.getCamera());
 	EndMode3D();
+	m_worldRenderer.drawForegroundLayer(m_restoreShader); // 演出(輪や星くず)より手前に重ねる
 	m_effects.drawScreen();
 
 	switch (m_flow.getPhase())
