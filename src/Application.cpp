@@ -54,6 +54,7 @@ infrastructure::ui::UiAction Application::updateUi()
 	case game::flow::GamePhase::ClearCard: return m_clearCard.update(m_flow);
 	case game::flow::GamePhase::StageIntro:
 	case game::flow::GamePhase::Playing:
+	case game::flow::GamePhase::Walking:
 	case game::flow::GamePhase::Clearing: return m_hud.update(m_flow);
 	}
 	return infrastructure::ui::UiAction{};
@@ -82,6 +83,7 @@ void Application::draw()
 		break;
 	case game::flow::GamePhase::StageIntro:
 	case game::flow::GamePhase::Playing:
+	case game::flow::GamePhase::Walking:
 	case game::flow::GamePhase::Clearing: m_hud.draw(m_flow, m_assets); break;
 	}
 

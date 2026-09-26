@@ -22,6 +22,7 @@ namespace game::flow
 		case GamePhase::Title: updateTitle(input); break;
 		case GamePhase::StageIntro: updateStageIntro(input); break;
 		case GamePhase::Playing: updatePlaying(input); break;
+		case GamePhase::Walking: updateWalking(); break;
 		case GamePhase::Clearing: updateClearing(); break;
 		case GamePhase::ClearCard: updateClearCard(input); break;
 		case GamePhase::Ending: updateEnding(input); break;
@@ -131,13 +132,33 @@ namespace game::flow
 		if (litAfter > litBefore)
 			pushEvent(event::GameEventType::GoalLit, -1, -1, litAfter);
 
+		// 道がすべてつながったら、主人公がゴールまで歩いていく(クリアの演出は着いてから)
 		if (m_board.isCleared())
 		{
-			m_hero.onStageCleared();
-			pushEvent(event::GameEventType::StageCleared, -1, -1, m_stageIndex);
-			m_hasRestoreStarted = false;
-			changePhase(GamePhase::Clearing);
+			startWalkToGoal();
+			changePhase(GamePhase::Walking);
 		}
+	}
+
+	void GameFlow::startWalkToGoal()
+	{
+		board::Cell goal{};
+		if (!m_board.findFarthestLitGoal(goal))
+			return;
+		std::vector<hero::Waypoint> path;
+		for (const board::Cell& cell : m_board.tracePathFromSource(goal))
+			path.push_back(hero::Waypoint{ board::cellCenterX(cell.m_col), board::cellCenterZ(cell.m_row) });
+		m_hero.startWalk(path);
+	}
+
+	void GameFlow::updateWalking()
+	{
+		if (m_hero.isWalking())
+			return;
+		m_hero.onStageCleared();
+		pushEvent(event::GameEventType::StageCleared, -1, -1, m_stageIndex);
+		m_hasRestoreStarted = false;
+		changePhase(GamePhase::Clearing);
 	}
 
 	void GameFlow::updateClearing()

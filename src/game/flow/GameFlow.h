@@ -76,6 +76,10 @@ namespace game::flow
 		void updateTitle(const GameInput& input);
 		void updateStageIntro(const GameInput& input);
 		void updatePlaying(const GameInput& input);
+		void updateWalking();
+
+		/// 電源からいちばん遠いゴールまで、つながった道に沿って主人公を歩かせる
+		void startWalkToGoal();
 		void updateClearing();
 		void updateClearCard(const GameInput& input);
 		void updateEnding(const GameInput& input);
