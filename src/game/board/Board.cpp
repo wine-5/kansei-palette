@@ -120,6 +120,59 @@ namespace game::board
 		return count;
 	}
 
+	bool Board::findFarthestLitGoal(Cell& outGoal) const
+	{
+		int farthest{ -1 };
+		for (int row{}; row < SIZE; ++row)
+		{
+			for (int col{}; col < SIZE; ++col)
+			{
+				const Tile& tile{ getTile(row, col) };
+				if (tile.m_type == TileType::Goal && tile.m_isPowered && tile.m_distance > farthest)
+				{
+					farthest = tile.m_distance;
+					outGoal = Cell{ row, col };
+				}
+			}
+		}
+		return farthest >= 0;
+	}
+
+	std::vector<Cell> Board::tracePathFromSource(Cell target) const
+	{
+		if (!isInside(target.m_row, target.m_col) || !getTile(target.m_row, target.m_col).m_isPowered)
+			return {};
+
+		// 行き先から、距離が 1 小さく、つながっている隣のマスへと電源まで戻る
+		std::vector<Cell> path{ target };
+		Cell current{ target };
+		while (getTile(current.m_row, current.m_col).m_distance > 0)
+		{
+			const Tile& tile{ getTile(current.m_row, current.m_col) };
+			bool isFound{};
+			for (const Neighbor& neighbor : NEIGHBORS)
+			{
+				const int row{ current.m_row + neighbor.m_rowOffset };
+				const int col{ current.m_col + neighbor.m_colOffset };
+				if (!isInside(row, col))
+					continue;
+				const Tile& next{ getTile(row, col) };
+				const bool isConnected{ (tile.connections() & core::toMask(neighbor.m_direction)) != 0
+					&& (next.connections() & core::toMask(core::opposite(neighbor.m_direction))) != 0 };
+				if (isConnected && next.m_isPowered && next.m_distance == tile.m_distance - 1)
+				{
+					current = Cell{ row, col };
+					path.push_back(current);
+					isFound = true;
+					break;
+				}
+			}
+			if (!isFound)
+				return {};
+		}
+		return std::vector<Cell>(path.rbegin(), path.rend());
+	}
+
 	bool Board::isCleared() const
 	{
 		const int goals{ countGoals() };
