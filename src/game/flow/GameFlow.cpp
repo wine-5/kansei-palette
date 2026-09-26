@@ -81,6 +81,7 @@ namespace game::flow
 		m_hasReachedEnding = false;
 		// タイトルでも箱庭の上に盤面を見せるため、ステージ 1 の盤面を読み込んでおく
 		loadBoard(0);
+		m_hero.placeAtTitle();
 		changePhase(GamePhase::Title);
 	}
 
