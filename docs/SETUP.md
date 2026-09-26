@@ -179,10 +179,10 @@ index.data   ← resources/ の中身
 2. **Kind of project** を **HTML** にする
 3. **Uploads** で zip をアップロードし、**This file will be played in the browser** にチェック
 4. **Embed options**
-   - **Viewport dimensions**: `1280 × 720`(`src/game/data/Config.h` の `SCREEN_WIDTH` / `SCREEN_HEIGHT` と同じにする)
-   - **Fullscreen button**: オン推奨
-   - **SharedArrayBuffer support**: オフのまま(このテンプレートはスレッドを使わないので不要)
-   - **Mobile friendly**: スマホ対応をするならオン
+   - **Viewport dimensions**: `1280 × 720`(ゲームは埋め込みの大きさに合わせて伸縮するので、他の大きさでも崩れない)
+   - **Fullscreen button**: オン推奨(全画面でも画面の大きさに合わせて描き直す)
+   - **SharedArrayBuffer support**: オフのまま(スレッドを使わないので不要)
+   - **Mobile friendly**: オン(縦長の画面では UI を縦向きの配置に切り替える)。**Orientation** は Default のままでよい
 5. 一度 **Draft** のまま保存し、ページを開いて起動・音・日本語表示を確認してから公開(ジャムのページから提出)
 
 > ⚠ itch.io 上での動作は、この環境からは確認していません(ローカルサーバー + Edge / Chrome で確認済み)。ジャム前にテスト用の下書きページを作って一度アップロードしておくと安心です。
