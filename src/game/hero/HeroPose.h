@@ -13,6 +13,7 @@ namespace game::hero
 		Think,   // 考え込む(しばらく操作がない)
 		Dizzy,   // 目が回る(やりなおし)
 		Cheer,   // 喜び(クリア演出)
-		JoyStar  // 星を伴う喜び(エンディング)
+		JoyStar, // 星を伴う喜び(エンディング)
+		Walk     // つながった道を歩いてゴールへ向かう
 	};
 } // namespace game::hero

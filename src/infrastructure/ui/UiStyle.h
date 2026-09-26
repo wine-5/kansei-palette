@@ -8,13 +8,12 @@ namespace infrastructure::ui
 	// --- 色 ---
 	constexpr Color ACCENT_INITIAL{ 0x3a, 0x3a, 0x3a, 255 }; // 色が 1 つも戻っていないときの強調色
 	constexpr Color ACCENT_RED{ 0xe5, 0x49, 0x3f, 255 };
-	constexpr Color ACCENT_BLUE{ 0x3d, 0x8b, 0xea, 255 };
-	constexpr Color ACCENT_GREEN{ 0x4c, 0xb8, 0x5a, 255 };
-	constexpr Color HUE_DOT_COLORS[]{
-		{ 0xe5, 0x49, 0x3f, 255 }, // 赤
-		{ 0x3d, 0x8b, 0xea, 255 }, // 青
-		{ 0x8b, 0xc3, 0x4a, 255 }, // 黄緑
-	};
+	/// 戻る色の代表の色(game::data::COLOR_BANDS)
+	inline Color bandColor(int index)
+	{
+		const game::data::ColorBand& band{ game::data::COLOR_BANDS[index] };
+		return Color{ band.m_red, band.m_green, band.m_blue, 255 };
+	}
 	constexpr Color DOT_EMPTY_COLOR{ 0xb8, 0xb8, 0xb8, 255 }; // まだ戻っていない色の丸
 	constexpr Color PANEL_COLOR{ 20, 20, 24, 150 };             // 文字の背景の半透明の板
 	constexpr Color TEXT_COLOR{ 250, 250, 250, 255 };
@@ -22,25 +21,13 @@ namespace infrastructure::ui
 	constexpr Color TEXT_OUTLINE_COLOR{ 30, 30, 34, 200 };
 	constexpr float TEXT_SPACING{ 1.0f };
 
-	/// 世界に戻った色の数(0〜3)
-	inline int countRestoredColors(const game::flow::GameFlow& flow)
-	{
-		const game::flow::RestoreLevel& restore{ flow.getRestore() };
-		return (restore.m_red > 0.5f ? 1 : 0) + (restore.m_blue > 0.5f ? 1 : 0) + (restore.m_yellowGreen > 0.5f ? 1 : 0);
-	}
-
-	/// 強調色(ステージをクリアするごとに 赤 → 青 → 緑、エンディングは赤)
+	/// 強調色(最後に戻った色。まだ戻っていなければ濃いグレー、エンディングは赤)
 	inline Color accentColor(const game::flow::GameFlow& flow)
 	{
 		if (flow.getPhase() == game::flow::GamePhase::Ending)
 			return ACCENT_RED;
-		switch (countRestoredColors(flow))
-		{
-		case 0: return ACCENT_INITIAL;
-		case 1: return ACCENT_RED;
-		case 2: return ACCENT_BLUE;
-		default: return ACCENT_GREEN;
-		}
+		const int restored{ flow.getRestore().countRestored() };
+		return restored == 0 ? ACCENT_INITIAL : bandColor(restored - 1);
 	}
 
 	/// 文字の幅と高さ

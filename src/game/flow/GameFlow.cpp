@@ -22,6 +22,7 @@ namespace game::flow
 		case GamePhase::Title: updateTitle(input); break;
 		case GamePhase::StageIntro: updateStageIntro(input); break;
 		case GamePhase::Playing: updatePlaying(input); break;
+		case GamePhase::Walking: updateWalking(); break;
 		case GamePhase::Clearing: updateClearing(); break;
 		case GamePhase::ClearCard: updateClearCard(input); break;
 		case GamePhase::Ending: updateEnding(input); break;
@@ -37,9 +38,8 @@ namespace game::flow
 		m_hero.update(dt, input.m_hasAnyInput);
 
 		// 色の復元度は、目標へ少しずつ近づける(約 1.4 秒で 9 割)
-		m_restore.m_red = core::approachExp(m_restore.m_red, m_restoreTarget.m_red, data::RESTORE_RATE, dt);
-		m_restore.m_blue = core::approachExp(m_restore.m_blue, m_restoreTarget.m_blue, data::RESTORE_RATE, dt);
-		m_restore.m_yellowGreen = core::approachExp(m_restore.m_yellowGreen, m_restoreTarget.m_yellowGreen, data::RESTORE_RATE, dt);
+		for (size_t i{}; i < m_restore.m_levels.size(); ++i)
+			m_restore.m_levels[i] = core::approachExp(m_restore.m_levels[i], m_restoreTarget.m_levels[i], data::RESTORE_RATE, dt);
 	}
 
 	int GameFlow::getRaisedPropCount(int stageIndex) const
@@ -131,13 +131,33 @@ namespace game::flow
 		if (litAfter > litBefore)
 			pushEvent(event::GameEventType::GoalLit, -1, -1, litAfter);
 
+		// 道がすべてつながったら、主人公がゴールまで歩いていく(クリアの演出は着いてから)
 		if (m_board.isCleared())
 		{
-			m_hero.onStageCleared();
-			pushEvent(event::GameEventType::StageCleared, -1, -1, m_stageIndex);
-			m_hasRestoreStarted = false;
-			changePhase(GamePhase::Clearing);
+			startWalkToGoal();
+			changePhase(GamePhase::Walking);
 		}
+	}
+
+	void GameFlow::startWalkToGoal()
+	{
+		board::Cell goal{};
+		if (!m_board.findFarthestLitGoal(goal))
+			return;
+		std::vector<hero::Waypoint> path;
+		for (const board::Cell& cell : m_board.tracePathFromSource(goal))
+			path.push_back(hero::Waypoint{ board::cellCenterX(cell.m_col), board::cellCenterZ(cell.m_row) });
+		m_hero.startWalk(path);
+	}
+
+	void GameFlow::updateWalking()
+	{
+		if (m_hero.isWalking())
+			return;
+		m_hero.onStageCleared();
+		pushEvent(event::GameEventType::StageCleared, -1, -1, m_stageIndex);
+		m_hasRestoreStarted = false;
+		changePhase(GamePhase::Clearing);
 	}
 
 	void GameFlow::updateClearing()
@@ -148,13 +168,9 @@ namespace game::flow
 		if (!m_hasRestoreStarted && m_phaseTime >= data::CLEAR_RESTORE_START)
 		{
 			m_hasRestoreStarted = true;
-			switch (stage.m_hue)
-			{
-			case data::HueBand::Red: m_restoreTarget.m_red = 1.0f; break;
-			case data::HueBand::Blue: m_restoreTarget.m_blue = 1.0f; break;
-			case data::HueBand::YellowGreen: m_restoreTarget.m_yellowGreen = 1.0f; break;
-			}
-			pushEvent(event::GameEventType::ColorRestoring, -1, -1, static_cast<int>(stage.m_hue));
+			// ステージ i をクリアすると、i 番目の色が戻る
+			m_restoreTarget.m_levels[m_stageIndex] = 1.0f;
+			pushEvent(event::GameEventType::ColorRestoring, -1, -1, m_stageIndex);
 		}
 
 		// 色が戻り始めてから、小物を一定の間隔で 1 つずつせり上げる

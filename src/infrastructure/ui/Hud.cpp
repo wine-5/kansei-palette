@@ -15,13 +15,13 @@ namespace
 
 	constexpr float MARGIN{ 16.0f };
 
-	// 左上: ステージ番号・名前・取り戻した色の丸
-	constexpr Rectangle STAGE_PANEL{ MARGIN, MARGIN, 330.0f, 92.0f };
+	// 左上: ステージ番号・名前・取り戻した色の丸(10 個を名前の下に並べる)
+	constexpr Rectangle STAGE_PANEL{ MARGIN, MARGIN, 300.0f, 124.0f };
 	constexpr float STAGE_LABEL_SIZE{ 20.0f };
-	constexpr float STAGE_NAME_SIZE{ 32.0f };
-	constexpr float DOT_RADIUS{ 11.0f };
-	constexpr float DOT_RADIUS_FILLED{ 14.0f }; // 取り戻した色は少し大きくする
-	constexpr float DOT_GAP{ 36.0f };
+	constexpr float STAGE_NAME_SIZE{ 30.0f };
+	constexpr float DOT_RADIUS{ 7.0f };
+	constexpr float DOT_RADIUS_FILLED{ 10.0f }; // 取り戻した色は少し大きくする
+	constexpr float DOT_GAP{ 26.0f };
 
 	// 右上: ボタン
 	constexpr float BUTTON_HEIGHT{ 48.0f };
@@ -80,15 +80,14 @@ namespace infrastructure::ui
 		char stageLabel[32]{};
 		std::snprintf(stageLabel, sizeof(stageLabel), "STAGE %d / %d", flow.getStageIndex() + 1, static_cast<int>(game::data::STAGES.size()));
 		drawText(font, stageLabel, Vector2{ STAGE_PANEL.x + 18.0f, STAGE_PANEL.y + 12.0f }, STAGE_LABEL_SIZE, TEXT_SUB_COLOR);
-		drawText(font, stage.m_name, Vector2{ STAGE_PANEL.x + 18.0f, STAGE_PANEL.y + 40.0f }, STAGE_NAME_SIZE, TEXT_COLOR);
+		drawText(font, game::data::COLOR_BANDS[flow.getStageIndex()].m_name, Vector2{ STAGE_PANEL.x + 18.0f, STAGE_PANEL.y + 38.0f }, STAGE_NAME_SIZE, TEXT_COLOR);
 
 		const game::flow::RestoreLevel& restore{ flow.getRestore() };
-		const float restored[]{ restore.m_red, restore.m_blue, restore.m_yellowGreen };
-		for (int i{}; i < 3; ++i)
+		for (int i{}; i < game::data::COLOR_COUNT; ++i)
 		{
-			const Vector2 center{ STAGE_PANEL.x + STAGE_PANEL.width - 24.0f - (2 - i) * DOT_GAP, STAGE_PANEL.y + STAGE_PANEL.height / 2.0f };
-			const bool isFilled{ restored[i] > 0.5f };
-			DrawCircleV(center, isFilled ? DOT_RADIUS_FILLED : DOT_RADIUS, isFilled ? HUE_DOT_COLORS[i] : DOT_EMPTY_COLOR);
+			const Vector2 center{ STAGE_PANEL.x + 30.0f + i * DOT_GAP, STAGE_PANEL.y + STAGE_PANEL.height - 22.0f };
+			const bool isFilled{ restore.m_levels[i] > 0.5f };
+			DrawCircleV(center, isFilled ? DOT_RADIUS_FILLED : DOT_RADIUS, isFilled ? bandColor(i) : DOT_EMPTY_COLOR);
 		}
 
 		// 右上: やりなおす(遊んでいるときだけ)、音の ON/OFF

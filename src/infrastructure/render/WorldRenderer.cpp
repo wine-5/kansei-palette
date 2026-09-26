@@ -129,6 +129,7 @@ namespace
 		{
 		case game::hero::HeroPose::Idle: return 4.0f;
 		case game::hero::HeroPose::Run: return 12.0f;
+		case game::hero::HeroPose::Walk: return 8.0f;
 		case game::hero::HeroPose::Cheer: return 6.0f;
 		default: return 1.0f;
 		}
@@ -483,7 +484,7 @@ namespace infrastructure::render
 			const Texture2D& texture{ m_assets->getHeroFrame(hero.getPose(), frame) };
 			const float worldPerPixel{ game::data::HERO_IDLE_HEIGHT / reference.height };
 			standees.push_back(Standee{ &texture, Vector3{ hero.getX(), groundHeightAt(hero.getX(), hero.getZ()), hero.getZ() },
-				texture.height * worldPerPixel, false });
+				texture.height * worldPerPixel, hero.isFacingLeft() });
 		}
 
 		// 半透明の縁が正しく重なるよう、奥(Z が小さい)から描く

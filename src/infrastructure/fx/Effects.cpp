@@ -32,12 +32,7 @@ namespace
 	constexpr float RAIN_RADIUS{ 5.5f };         // 降らせる範囲(島の中心からの距離)
 	constexpr float RAIN_HEIGHT{ 4.5f };
 
-	/// ステージごとの星くずの色(戻る色に合わせた 4 色)
-	constexpr Color STAGE_COLORS[][4]{
-		{ { 0xe5, 0x49, 0x3f, 255 }, { 0xff, 0x8a, 0x65, 255 }, { 0xff, 0xd5, 0x4f, 255 }, { 0xff, 0xf3, 0xe0, 255 } },
-		{ { 0x3d, 0x8b, 0xea, 255 }, { 0x7f, 0xe3, 0xff, 255 }, { 0xb3, 0xe5, 0xfc, 255 }, { 0xf0, 0xf8, 0xff, 255 } },
-		{ { 0x4c, 0xb8, 0x5a, 255 }, { 0x8b, 0xc3, 0x4a, 255 }, { 0xff, 0xe2, 0x7a, 255 }, { 0xf4, 0xff, 0xe0, 255 } },
-	};
+
 	/// エンディングの色とりどりの星くず
 	constexpr Color RAINBOW_COLORS[]{
 		{ 0xe5, 0x49, 0x3f, 255 }, { 0xf0, 0x8a, 0x2c, 255 }, { 0xf3, 0xc2, 0x1f, 255 }, { 0x8b, 0xc3, 0x4a, 255 },
@@ -49,9 +44,18 @@ namespace
 		return min + (max - min) * (GetRandomValue(0, 10000) / 10000.0f);
 	}
 
-	const Color* stageColors(int stageIndex)
+	/// ステージの星くずの色: 戻る色と、それを白に近づけた 3 色
+	std::array<Color, 4> stageColors(int stageIndex)
 	{
-		return STAGE_COLORS[stageIndex % static_cast<int>(std::size(STAGE_COLORS))];
+		const game::data::ColorBand& band{ game::data::COLOR_BANDS[stageIndex % game::data::COLOR_COUNT] };
+		std::array<Color, 4> colors{};
+		for (int i{}; i < 4; ++i)
+		{
+			const float t{ i * 0.28f }; // 0, 0.28, 0.56, 0.84 だけ白に寄せる
+			colors[i] = Color{ static_cast<unsigned char>(band.m_red + (255 - band.m_red) * t), static_cast<unsigned char>(band.m_green + (255 - band.m_green) * t),
+				static_cast<unsigned char>(band.m_blue + (255 - band.m_blue) * t), 255 };
+		}
+		return colors;
 	}
 } // namespace
 
@@ -102,6 +106,7 @@ namespace infrastructure::fx
 			case game::event::GameEventType::StageCleared:
 			{
 				// 各ゴールから星くずを打ち上げ、輪を広げる。盤面全体にも大きな輪
+				const std::array<Color, 4> colors{ stageColors(stageIndex) };
 				const game::board::Board& board{ flow.getBoard() };
 				for (int row{}; row < game::board::Board::SIZE; ++row)
 				{
@@ -110,11 +115,11 @@ namespace infrastructure::fx
 						if (board.getTile(row, col).m_type != game::board::TileType::Goal)
 							continue;
 						const Vector3 position{ render::WorldRenderer::cellToWorld(row, col) };
-						m_particles.spawnBurst(position, GOAL_BURST, stageColors(stageIndex), 4);
-						spawnRing(position, GOAL_RING_RADIUS, stageColors(stageIndex)[0]);
+						m_particles.spawnBurst(position, GOAL_BURST, colors.data(), static_cast<int>(colors.size()));
+						spawnRing(position, GOAL_RING_RADIUS, colors[0]);
 					}
 				}
-				spawnRing(Vector3{}, BOARD_RING_RADIUS, stageColors(stageIndex)[1]);
+				spawnRing(Vector3{}, BOARD_RING_RADIUS, colors[1]);
 				startFlash(CLEAR_FLASH);
 				startShake(CLEAR_SHAKE);
 				break;
@@ -123,7 +128,8 @@ namespace infrastructure::fx
 			{
 				// せり上がった小物の足元から星くず(m_value = 小物の番号)
 				const game::data::PropPlacement& prop{ game::data::STAGES[stageIndex].m_props[event.m_value] };
-				m_particles.spawnBurst(Vector3{ prop.m_x, prop.m_height * 0.3f, prop.m_z }, PROP_BURST, stageColors(stageIndex), 4, 0.7f);
+				const std::array<Color, 4> colors{ stageColors(stageIndex) };
+				m_particles.spawnBurst(Vector3{ prop.m_x, prop.m_height * 0.3f, prop.m_z }, PROP_BURST, colors.data(), static_cast<int>(colors.size()), 0.7f);
 				break;
 			}
 			case game::event::GameEventType::EndingStarted:

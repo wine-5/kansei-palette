@@ -53,8 +53,8 @@ TILE_SHEETS = {
 
 # Web 版の読み込みを軽くするため、ゲームで使うテーマ・見た目違いの数だけを書き出す
 # (7 テーマ × 98 枚をすべて書き出すと約 17MB になる)
-EXPORT_THEMES = {"meadow", "sea", "forest"}
-VARIANTS_PER_KIND = 4
+EXPORT_THEMES = {"meadow", "snow", "desert", "night", "sea", "forest", "lava"}
+VARIANTS_PER_KIND = 2
 
 # 背景の帯の名前(上から順)
 BG_SHEET = "BG.png"

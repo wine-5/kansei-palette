@@ -16,14 +16,23 @@ namespace
 		float m_selfRestore{}; // tint で渡す「通電度」
 	};
 
+	/// 最初の count 色だけが戻った状態
+	game::flow::RestoreLevel firstColors(int count)
+	{
+		game::flow::RestoreLevel level;
+		for (int i{}; i < count; ++i)
+			level.m_levels[i] = 1.0f;
+		return level;
+	}
+
 	const PreviewRow ROWS[]{
 		{ "original (no shader)", {}, 0.0f },
-		{ "restore: none", { 0.0f, 0.0f, 0.0f }, 0.0f },
-		{ "restore: red", { 1.0f, 0.0f, 0.0f }, 0.0f },
-		{ "restore: red + blue", { 1.0f, 1.0f, 0.0f }, 0.0f },
-		{ "restore: all", { 1.0f, 1.0f, 1.0f }, 0.0f },
-		{ "none + tile powered 0.5", { 0.0f, 0.0f, 0.0f }, 0.5f },
-		{ "none + tile powered 1.0", { 0.0f, 0.0f, 0.0f }, 1.0f },
+		{ "restore: none", firstColors(0), 0.0f },
+		{ "restore: 1 (red)", firstColors(1), 0.0f },
+		{ "restore: 3 (red - yellow)", firstColors(3), 0.0f },
+		{ "restore: 7 (red - light blue)", firstColors(7), 0.0f },
+		{ "restore: all", game::flow::RestoreLevel::full(), 0.0f },
+		{ "none + tile powered 1.0", firstColors(0), 1.0f },
 	};
 } // namespace
 

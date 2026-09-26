@@ -1,6 +1,8 @@
 #pragma once
+#include "Cell.h"
 #include "Tile.h"
 #include <array>
+#include <vector>
 
 namespace game::board
 {
@@ -12,7 +14,7 @@ namespace game::board
 	{
 	public:
 		/// 盤面の 1 辺のマス数
-		static constexpr int SIZE{ 5 };
+		static constexpr int SIZE{ BOARD_SIZE };
 
 		/**
 		 * @brief 指定したマスが盤面の内側かどうか
@@ -60,6 +62,21 @@ namespace game::board
 
 		/// すべてのゴールが点灯しているか
 		bool isCleared() const;
+
+		/**
+		 * @brief 電源からいちばん遠いゴールを探す
+		 * @param outGoal 見つかったゴールの位置
+		 * @return 電気が届いているゴールがあれば true
+		 */
+		bool findFarthestLitGoal(Cell& outGoal) const;
+
+		/**
+		 * @brief 電源から指定したマスまでの道筋(電気が通っているつながり)を求める
+		 * @details recalculatePower() で記録した電源からの距離をたどって戻る。
+		 * @param target 行き先のマス(電気が届いていること)
+		 * @return 電源から target までのマス(両端を含む)。届いていなければ空
+		 */
+		std::vector<Cell> tracePathFromSource(Cell target) const;
 
 	private:
 		std::array<Tile, SIZE * SIZE> m_tiles{};

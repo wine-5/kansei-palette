@@ -62,7 +62,7 @@ namespace infrastructure::render
 
 	private:
 		Shader m_shader{};
-		int m_restoreLocation{ -1 }; // uniform vec3 restore(r, b, g)の場所
+		int m_restoreLocation{ -1 }; // uniform float restore[10] の場所
 		bool m_isLoaded{};
 	};
 } // namespace infrastructure::render

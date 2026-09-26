@@ -49,12 +49,12 @@ namespace infrastructure::ui
 	{
 		const Font& font{ assets.getUiFont() };
 		const int stageIndex{ flow.getStageIndex() };
-		const Color stageColor{ HUE_DOT_COLORS[static_cast<int>(game::data::STAGES[stageIndex].m_hue)] };
+		const Color stageColor{ bandColor(stageIndex) };
 		const Rectangle card{ cardBounds() };
 		drawPanel(card);
 
 		// 「○○が もどった」の左に、戻った色の丸を置く
-		const std::string title{ std::string(game::data::STAGES[stageIndex].m_name) + TEXT_COLOR_RETURNED };
+		const std::string title{ std::string(game::data::COLOR_BANDS[stageIndex].m_name) + TEXT_COLOR_RETURNED };
 		const Vector2 titleSize{ measureText(font, title.c_str(), TITLE_SIZE) };
 		const float rowWidth{ DOT_RADIUS * 2.0f + 18.0f + titleSize.x };
 		const float left{ card.x + (card.width - rowWidth) / 2.0f };

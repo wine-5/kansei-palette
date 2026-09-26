@@ -37,8 +37,15 @@ namespace
 	/// 各ステージの解答(十字タイルは向きが任意なので含めない)
 	const std::vector<std::vector<SolutionStep>> SOLUTIONS{
 		{ { 4, 1, 1 }, { 4, 2, 3 }, { 3, 2, 0 }, { 2, 2, 1 }, { 2, 3, 1 }, { 2, 4, 3 }, { 1, 4, 0 } },
+		{ { 0, 0, 1 }, { 0, 1, 1 }, { 0, 2, 1 }, { 0, 3, 2 }, { 1, 0, 0 }, { 1, 1, 1 }, { 1, 3, 0 } },
+		{ { 0, 1, 1 }, { 0, 2, 2 }, { 1, 0, 1 }, { 1, 1, 2 }, { 1, 2, 0 }, { 2, 1, 0 }, { 2, 2, 3 }, { 3, 0, 0 } },
+		{ { 0, 0, 1 }, { 0, 1, 2 }, { 0, 2, 2 }, { 1, 0, 0 }, { 1, 2, 0 }, { 2, 2, 0 }, { 2, 3, 3 } },
 		{ { 2, 2, 2 }, { 2, 1, 1 }, { 2, 0, 0 }, { 2, 3, 1 } },
+		{ { 0, 4, 2 }, { 1, 3, 1 }, { 1, 4, 3 }, { 2, 3, 1 }, { 2, 4, 2 }, { 4, 1, 1 }, { 4, 2, 1 }, { 4, 3, 1 }, { 4, 4, 3 } },
+		{ { 1, 2, 2 }, { 2, 1, 2 }, { 3, 1, 0 }, { 3, 2, 1 }, { 3, 3, 2 }, { 4, 1, 0 }, { 4, 2, 3 }, { 4, 3, 0 }, { 4, 4, 3 } },
+		{ { 0, 0, 1 }, { 0, 1, 2 }, { 0, 3, 2 }, { 1, 0, 0 }, { 1, 3, 0 }, { 2, 1, 1 }, { 2, 2, 2 }, { 2, 3, 3 }, { 3, 2, 0 }, { 3, 3, 1 } },
 		{ { 0, 1, 1 }, { 0, 2, 2 }, { 3, 2, 0 }, { 1, 3, 1 }, { 1, 4, 2 }, { 2, 4, 0 }, { 1, 1, 1 }, { 2, 1, 0 }, { 3, 1, 3 } },
+		{ { 0, 1, 1 }, { 0, 2, 1 }, { 0, 3, 2 }, { 0, 4, 2 }, { 1, 3, 0 }, { 1, 4, 0 }, { 2, 1, 1 }, { 2, 3, 3 }, { 2, 4, 0 }, { 3, 1, 0 } },
 	};
 
 	void testStage(size_t stageIndex)
@@ -120,7 +127,6 @@ namespace
 		flow.update(DT, tapSource);
 		check(hasEvent(flow, game::event::GameEventType::TileBlocked), "電源をタップすると TileBlocked が記録される");
 
-		bool isCleared{};
 		for (const auto& step : SOLUTIONS[0])
 		{
 			for (int i{}; i < 4 && flow.getBoard().getTile(step.m_row, step.m_col).m_rotation != step.m_rotation; ++i)
@@ -129,11 +135,30 @@ namespace
 				tap.m_tappedRow = step.m_row;
 				tap.m_tappedCol = step.m_col;
 				flow.update(DT, tap);
-				isCleared = isCleared || hasEvent(flow, game::event::GameEventType::StageCleared);
 			}
 		}
-		check(isCleared, "解答どおりにタップすると StageCleared が記録される");
-		check(flow.getPhase() == game::flow::GamePhase::Clearing, "クリア演出に進む");
+		check(flow.getPhase() == game::flow::GamePhase::Walking, "道がつながると主人公がゴールへ歩き出す");
+		check(flow.getHero().getPose() == game::hero::HeroPose::Walk, "主人公は歩くポーズになる");
+
+		// 歩いている間もタップしても回らない
+		{
+			const int before{ flow.getBoard().getTile(0, 0).m_rotation };
+			game::flow::GameInput tap{};
+			tap.m_tappedRow = 0;
+			tap.m_tappedCol = 0;
+			flow.update(DT, tap);
+			check(flow.getBoard().getTile(0, 0).m_rotation == before, "歩いている間はタイルが回らない");
+		}
+
+		// ゴールに着いたらクリア
+		bool isCleared{};
+		for (int i{}; i < 1200 && flow.getPhase() == game::flow::GamePhase::Walking; ++i)
+		{
+			flow.update(DT, game::flow::GameInput{});
+			isCleared = isCleared || hasEvent(flow, game::event::GameEventType::StageCleared);
+		}
+		check(isCleared && flow.getPhase() == game::flow::GamePhase::Clearing, "ゴールに着くと StageCleared が記録されクリア演出に進む");
+		check(flow.getHero().getX() == game::board::cellCenterX(4) && flow.getHero().getZ() == game::board::cellCenterZ(0), "主人公はゴールのマスに立っている");
 
 		// クリア演出中はタップしても回らない
 		const int before{ flow.getBoard().getTile(0, 0).m_rotation };
@@ -174,7 +199,10 @@ namespace
 				flow.update(1.0f / 60.0f, game::flow::GameInput{});
 			check(flow.getStageIndex() == stage && flow.getPhase() == game::flow::GamePhase::Playing, "ステージが始まって遊べる状態になる");
 			solveCurrentStage(flow);
-			check(flow.getPhase() == game::flow::GamePhase::Clearing, "解答どおりに回すとクリア演出に進む");
+			check(flow.getPhase() == game::flow::GamePhase::Walking, "解答どおりに回すと主人公がゴールへ歩き出す");
+			for (int i{}; i < 1200 && flow.getPhase() == game::flow::GamePhase::Walking; ++i)
+				flow.update(1.0f / 60.0f, game::flow::GameInput{});
+			check(flow.getPhase() == game::flow::GamePhase::Clearing, "ゴールに着くとクリア演出に進む");
 
 			advance(flow, game::data::CLEAR_CARD_TIME + 0.1f);
 			check(flow.getRaisedPropCount(stage) == game::data::STAGES[stage].m_propCount, "クリア演出で、そのステージの小物がすべてせり上がる");
@@ -191,11 +219,11 @@ namespace
 		advance(flow, game::data::ENDING_DELAY + 3.0f);
 		check(flow.getPhase() == game::flow::GamePhase::Ending, "最後のステージの後はエンディングになる");
 		const game::flow::RestoreLevel& restore{ flow.getRestore() };
-		check(restore.m_red > 0.99f && restore.m_blue > 0.99f && restore.m_yellowGreen > 0.99f, "エンディングではすべての色が戻っている");
+		check(restore.countRestored() == game::data::COLOR_COUNT, "エンディングではすべての色が戻っている");
 
 		flow.update(1.0f / 60.0f, confirm);
 		check(flow.getStageIndex() == 0 && flow.getPhase() == game::flow::GamePhase::StageIntro, "もういちど遊ぶとステージ 1 から始まる");
-		check(flow.getRaisedPropCount(0) == 0 && flow.getRestore().m_red == 0.0f, "色と小物がリセットされる");
+		check(flow.getRaisedPropCount(0) == 0 && flow.getRestore().countRestored() == 0, "色と小物がリセットされる");
 	}
 } // namespace
 
