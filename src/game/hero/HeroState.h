@@ -27,8 +27,12 @@ namespace game::hero
 		 */
 		void update(float dt, bool hasInput);
 
-		/// ステージ開始: 画面の左外から立ち位置まで走って入ってくる
-		void startRunIn();
+		/**
+		 * @brief ステージ開始: 画面の左外から立ち位置まで走って入ってくる
+		 * @param x 立ち位置の X 座標(ワールド単位)
+		 * @param z 立ち位置の Z 座標(ワールド単位。走っている間もこの奥行きのまま進む)
+		 */
+		void startRunIn(float x, float z);
 
 		/// タイトルの立ち位置に置く
 		void placeAtTitle();
@@ -86,5 +90,6 @@ namespace game::hero
 		size_t m_pathIndex{};         // 次に向かう点
 		float m_x{};
 		float m_z{};
+		float m_runTargetX{}; // 入場で走っていく先の X 座標
 	};
 } // namespace game::hero

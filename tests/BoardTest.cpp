@@ -115,6 +115,12 @@ namespace
 			flow.update(DT, game::flow::GameInput{});
 		check(flow.getPhase() == game::flow::GamePhase::Playing, "入場が終わると遊べる状態になる");
 		check(flow.getHero().getPose() == game::hero::HeroPose::Idle, "入場が終わると主人公は待機のポーズになる");
+		{
+			game::board::Cell source{};
+			flow.getBoard().findSource(source);
+			check(flow.getHero().getX() == game::board::cellCenterX(source.m_col) && flow.getHero().getZ() == game::board::cellCenterZ(source.m_row),
+				"主人公は電源のマスに立っている");
+		}
 
 		// 操作しないでいると考え込む
 		advance(flow, game::data::HERO_IDLE_THINK_TIME + 0.1f);

@@ -56,7 +56,10 @@ namespace game::flow
 	void GameFlow::startStage(int stageIndex)
 	{
 		loadBoard(stageIndex);
-		m_hero.startRunIn();
+		// 主人公は電源のマスに立って待つ(道がつながったら、そこから歩き出す)
+		board::Cell source{};
+		m_board.findSource(source);
+		m_hero.startRunIn(board::cellCenterX(source.m_col), board::cellCenterZ(source.m_row));
 		pushEvent(event::GameEventType::StageStarted, -1, -1, stageIndex);
 		changePhase(GamePhase::StageIntro);
 	}
