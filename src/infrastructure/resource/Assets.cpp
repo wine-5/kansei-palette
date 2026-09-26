@@ -11,8 +11,11 @@ namespace
 	// 画像は tools/slice_sheet.py が art/ のシートから切り出したもの
 	constexpr const char* IMAGE_DIR{ "resources/images/" };
 	// ステージごとのタイルのテーマ(tiles/ の下のフォルダ名)。戻る色(赤・青・黄緑)に合わせている
-	constexpr const char* STAGE_TILE_THEMES[]{ "meadow", "sea", "forest" };
-	static_assert(std::size(STAGE_TILE_THEMES) == game::data::STAGES.size(), "ステージの数とテーマの数をそろえる");
+	// タイルのテーマ(tiles/ の下のフォルダ名)と、ステージごとに使うテーマの番号
+	constexpr const char* TILE_THEMES[]{ "meadow", "desert", "lava", "forest", "sea", "snow", "night" };
+	constexpr int STAGE_TILE_THEME[]{ 0, 1, 2, 3, 0, 4, 5, 4, 6, 3 };
+	static_assert(std::size(TILE_THEMES) == infrastructure::resource::TILE_THEME_COUNT, "テーマの数をそろえる");
+	static_assert(std::size(STAGE_TILE_THEME) == game::data::STAGES.size(), "ステージの数とテーマの割り当ての数をそろえる");
 	constexpr const char* UI_FONT_PATH{ "resources/fonts/NotoSansJP-Regular-subset.ttf" };
 	constexpr int UI_FONT_SIZE{ 48 };    // UI の文字(一番大きく表示するサイズに合わせる)
 	constexpr int TITLE_FONT_SIZE{ 96 }; // タイトルの文字
@@ -37,7 +40,8 @@ namespace
 	// game::board::TileType の順
 	constexpr const char* TILE_FILES[]{ "straight", "corner", "tee", "cross", "source", "goal", "locked", "blank" };
 	// game::data::PropType の順
-	constexpr const char* PROP_FILES[]{ "cottage", "flowers", "fence", "fountain", "lamp", "balloon", "tree", "pine" };
+	constexpr const char* PROP_FILES[]{ "cottage", "flowers", "fence", "fountain", "lamp", "balloon", "tree", "pine",
+		"well", "crate_barrel", "signpost", "statue", "bridge", "hay", "mushroom" };
 	/// ポーズごとに使う主人公のコマ(resources/images/hero/hero_NN.png の番号。game::hero::HeroPose の順)
 	const std::vector<int> HERO_FRAMES[]{
 		{ 0, 1, 2, 3 },       // 待機
@@ -97,23 +101,22 @@ namespace infrastructure::resource
 		// フォントに焼き込む文字 = UI の文章 + 全ステージの名前とヒント文
 		std::string usedText{ ui::TEXT_ALL_UI };
 		for (const auto& stage : game::data::STAGES)
-		{
-			usedText += stage.m_name;
 			usedText += stage.m_hint;
-		}
+		for (const auto& band : game::data::COLOR_BANDS)
+			usedText += band.m_name;
 		m_uiFont = loadJapaneseFont(UI_FONT_PATH, scaledFontSize(UI_FONT_SIZE), usedText.c_str());
 		m_titleFont = loadFontForText(UI_FONT_PATH, scaledFontSize(TITLE_FONT_SIZE), ui::TEXT_TITLE);
 
 		bool isOk{ true };
-		for (size_t stage{}; stage < m_tiles.size(); ++stage)
+		for (size_t theme{}; theme < m_tiles.size(); ++theme)
 		{
-			for (size_t type{}; type < m_tiles[stage].size(); ++type)
+			for (size_t type{}; type < m_tiles[theme].size(); ++type)
 			{
 				for (int variant{}; variant < TILE_VARIANT_COUNT; ++variant)
 				{
 					char fileName[32]{};
 					std::snprintf(fileName, sizeof(fileName), "%s_%02d.png", TILE_FILES[type], variant);
-					m_tiles[stage][type][variant] = loadSmoothTexture(std::string(IMAGE_DIR) + "tiles/" + STAGE_TILE_THEMES[stage] + "/" + fileName, isOk);
+					m_tiles[theme][type][variant] = loadSmoothTexture(std::string(IMAGE_DIR) + "tiles/" + TILE_THEMES[theme] + "/" + fileName, isOk);
 				}
 			}
 		}
@@ -138,8 +141,8 @@ namespace infrastructure::resource
 
 	void Assets::unload()
 	{
-		for (auto& stage : m_tiles)
-			for (auto& type : stage)
+		for (auto& theme : m_tiles)
+			for (auto& type : theme)
 				for (Texture2D& texture : type)
 					UnloadTexture(texture);
 		for (Texture2D& texture : m_props)
@@ -163,9 +166,9 @@ namespace infrastructure::resource
 
 	const Texture2D& Assets::getTileTexture(int stageIndex, game::board::TileType type, int variant) const
 	{
-		const int stage{ std::clamp(stageIndex, 0, static_cast<int>(m_tiles.size()) - 1) };
+		const int stage{ std::clamp(stageIndex, 0, static_cast<int>(std::size(STAGE_TILE_THEME)) - 1) };
 		const int wrapped{ ((variant % TILE_VARIANT_COUNT) + TILE_VARIANT_COUNT) % TILE_VARIANT_COUNT };
-		return m_tiles[stage][static_cast<size_t>(type)][wrapped];
+		return m_tiles[STAGE_TILE_THEME[stage]][static_cast<size_t>(type)][wrapped];
 	}
 
 	const Texture2D& Assets::getBackground(BackgroundLayer layer) const

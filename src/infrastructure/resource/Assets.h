@@ -9,7 +9,10 @@
 namespace infrastructure::resource
 {
 	/// タイルの見た目違いの数(tools/slice_sheet.py の VARIANTS_PER_KIND と同じ)
-	constexpr int TILE_VARIANT_COUNT{ 4 };
+	constexpr int TILE_VARIANT_COUNT{ 2 };
+
+	/// タイルのテーマの数(草原・砂漠・溶岩・森・海・雪・夜)
+	constexpr int TILE_THEME_COUNT{ 7 };
 
 	/**
 	 * @brief 背景の帯(奥から順)
@@ -87,10 +90,10 @@ namespace infrastructure::resource
 		const Font& getTitleFont() const { return m_titleFont; }
 
 	private:
-		// [ステージ][game::board::TileType の順][見た目違い]
-		std::array<std::array<std::array<Texture2D, TILE_VARIANT_COUNT>, 8>, game::data::STAGES.size()> m_tiles{};
+		// [テーマ][game::board::TileType の順][見た目違い]
+		std::array<std::array<std::array<Texture2D, TILE_VARIANT_COUNT>, 8>, TILE_THEME_COUNT> m_tiles{};
 		std::array<Texture2D, 4> m_backgrounds{}; // BackgroundLayer の順
-		std::array<Texture2D, 8> m_props{};  // game::data::PropType の順
+		std::array<Texture2D, game::data::PROP_TYPE_COUNT> m_props{}; // game::data::PropType の順
 		std::array<std::vector<Texture2D>, 8> m_heroFrames{}; // game::hero::HeroPose の順
 		Texture2D m_palette{};
 		Font m_uiFont{};
