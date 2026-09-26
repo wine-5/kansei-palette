@@ -212,11 +212,11 @@ namespace
 		advance(flow, game::data::ENDING_DELAY + 3.0f);
 		check(flow.getPhase() == game::flow::GamePhase::Ending, "最後のステージの後はエンディングになる");
 		const game::flow::RestoreLevel& restore{ flow.getRestore() };
-		check(restore.m_red > 0.99f && restore.m_blue > 0.99f && restore.m_yellowGreen > 0.99f, "エンディングではすべての色が戻っている");
+		check(restore.countRestored() == game::data::COLOR_COUNT, "エンディングではすべての色が戻っている");
 
 		flow.update(1.0f / 60.0f, confirm);
 		check(flow.getStageIndex() == 0 && flow.getPhase() == game::flow::GamePhase::StageIntro, "もういちど遊ぶとステージ 1 から始まる");
-		check(flow.getRaisedPropCount(0) == 0 && flow.getRestore().m_red == 0.0f, "色と小物がリセットされる");
+		check(flow.getRaisedPropCount(0) == 0 && flow.getRestore().countRestored() == 0, "色と小物がリセットされる");
 	}
 } // namespace
 
