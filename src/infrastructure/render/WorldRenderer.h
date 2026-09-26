@@ -51,6 +51,12 @@ namespace infrastructure::render
 		 */
 		void draw(const game::flow::GameFlow& flow, const RestoreShader& shader) const;
 
+		/**
+		 * @brief 手前の花と柵の帯を描く(3D の演出の後、UI の前に呼ぶ)
+		 * @param shader 色の復元シェーダー
+		 */
+		void drawForegroundLayer(const RestoreShader& shader) const;
+
 		/// 現在のカメラ(マウスからマスを求めるときに使う)
 		const Camera3D& getCamera() const { return m_camera; }
 

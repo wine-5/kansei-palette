@@ -7,6 +7,7 @@ void Application::init()
 	m_restoreShader.load();
 	m_worldRenderer.init(m_assets, m_restoreShader);
 	m_shaderPreview.init();
+	m_effects.init();
 }
 
 void Application::runFrame()
@@ -22,6 +23,9 @@ void Application::runFrame()
 	const game::event::GameEventList& events{ m_flow.getEvents() };
 	m_audio.onEvents(events, m_flow.isSoundOn());
 	m_effects.onEvents(events, m_flow);
+	// F4: クリアの演出だけを再生する(演出の見た目を調整するときの確認用)
+	if (IsKeyPressed(KEY_F4))
+		m_effects.onEvents(game::event::GameEventList{ { game::event::GameEventType::StageCleared } }, m_flow);
 	m_effects.update(dt);
 	m_worldRenderer.update(dt, m_flow, events, input, m_effects.getCameraShake());
 	m_shaderPreview.update();
@@ -33,6 +37,7 @@ void Application::runFrame()
 void Application::shutdown()
 {
 	m_audio.unload();
+	m_effects.unload();
 	m_shaderPreview.unload();
 	m_worldRenderer.unload();
 	m_restoreShader.unload();
@@ -61,6 +66,7 @@ void Application::draw()
 	BeginMode3D(m_worldRenderer.getCamera());
 	m_effects.drawWorld(m_worldRenderer.getCamera());
 	EndMode3D();
+	m_worldRenderer.drawForegroundLayer(m_restoreShader); // 演出(輪や星くず)より手前に重ねる
 	m_effects.drawScreen();
 
 	switch (m_flow.getPhase())
